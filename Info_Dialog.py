@@ -6,6 +6,8 @@ from PyQt5.QtCore import *
 from Info_Dialog_ui import Ui_Info_Dialog
 
 class Info_Dialog(QDialog, Ui_Info_Dialog):
+    setSignal = pyqtSignal(bool)
+
     def __init__(self, parent=None):
         super(Info_Dialog, self).__init__()
         self.setupUi(self)
@@ -18,7 +20,9 @@ class Info_Dialog(QDialog, Ui_Info_Dialog):
         self.Cancel_btn.clicked.connect(self.cancel_slot)
     
     def set_slot(self):
-        pass
+        if self.lineEdit.text() != "":
+            self.setSignal.emit(1)
+        else: self.setSignal.emit(0)
 
     def cancel_slot(self):
         self.close()

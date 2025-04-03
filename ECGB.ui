@@ -126,7 +126,7 @@
           <string notr="true">color: rgb(255, 255, 255);</string>
          </property>
          <property name="text">
-          <string>张三</string>
+          <string>——</string>
          </property>
         </widget>
        </item>
@@ -175,7 +175,7 @@
           <string notr="true">color: rgb(255, 255, 255);</string>
          </property>
          <property name="text">
-          <string>成人</string>
+          <string>——</string>
          </property>
         </widget>
        </item>
@@ -221,7 +221,7 @@
           <string notr="true">color: rgb(255, 255, 255);</string>
          </property>
          <property name="text">
-          <string>男</string>
+          <string>——</string>
          </property>
         </widget>
        </item>
@@ -282,7 +282,10 @@
             <string notr="true">color: rgb(255, 255, 255);</string>
            </property>
            <property name="text">
-            <string>2025年1月1日</string>
+            <string>——</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
            </property>
           </widget>
          </item>
@@ -300,7 +303,7 @@
             <string notr="true">color: rgb(255, 255, 255);</string>
            </property>
            <property name="text">
-            <string>19：59：23</string>
+            <string>——</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -457,6 +460,11 @@
               <property name="frameShadow">
                <enum>QFrame::Raised</enum>
               </property>
+              <layout class="QVBoxLayout" name="verticalLayout_12">
+               <item>
+                <widget class="QGraphicsView" name="ecg1_graphicsView"/>
+               </item>
+              </layout>
              </widget>
             </item>
            </layout>
@@ -652,7 +660,7 @@ border-radius: 5px;</string>
                <string notr="true">color: rgb(37, 232, 30);</string>
               </property>
               <property name="text">
-               <string>90</string>
+               <string>——</string>
               </property>
               <property name="alignment">
                <set>Qt::AlignCenter</set>
@@ -780,6 +788,11 @@ color: rgb(255, 195, 0);</string>
               <property name="frameShadow">
                <enum>QFrame::Raised</enum>
               </property>
+              <layout class="QVBoxLayout" name="verticalLayout_11">
+               <item>
+                <widget class="QGraphicsView" name="resp2_graphicsView"/>
+               </item>
+              </layout>
              </widget>
             </item>
            </layout>
@@ -981,7 +994,7 @@ background-color: rgb(255, 195, 0);</string>
                <string notr="true">color: rgb(255, 195, 0);</string>
               </property>
               <property name="text">
-               <string>20</string>
+               <string>——</string>
               </property>
               <property name="alignment">
                <set>Qt::AlignCenter</set>
@@ -1106,6 +1119,11 @@ color: rgb(51, 232, 220);</string>
               <property name="frameShadow">
                <enum>QFrame::Raised</enum>
               </property>
+              <layout class="QVBoxLayout" name="verticalLayout_10">
+               <item>
+                <widget class="QGraphicsView" name="spo2_graphicsView"/>
+               </item>
+              </layout>
              </widget>
             </item>
            </layout>
@@ -1309,7 +1327,7 @@ background-color: rgb(51, 232, 220);</string>
                  <string notr="true">color: rgb(51, 232, 220);</string>
                 </property>
                 <property name="text">
-                 <string>96</string>
+                 <string>——</string>
                 </property>
                 <property name="alignment">
                  <set>Qt::AlignCenter</set>
@@ -1356,7 +1374,7 @@ background-color: rgb(51, 232, 220);</string>
                  <string notr="true">color: rgb(51, 232, 220);</string>
                 </property>
                 <property name="text">
-                 <string>60</string>
+                 <string>——</string>
                 </property>
                 <property name="alignment">
                  <set>Qt::AlignCenter</set>
