@@ -1,19 +1,19 @@
 import datetime
 import math
 import random
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
 import sys
-
 import serial
-
 from CK_Dialog import CK_Dialog
-from ECGB import Ui_ECGB_Window
 from Info_Dialog import Info_Dialog
 from PackUnpack import PackUnpack
 
-class ECGB_Window(QMainWindow, Ui_ECGB_Window):
+from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QGraphicsScene, QGraphicsView, QFrame
+from PyQt5.QtGui import QPainter, QPen, QBrush, QColor, QIcon, QGuiApplication, QPainterPath
+
+
+
+class ECGB_Window(QMainWindow, ECGB_Window):
     def __init__(self):
         super(ECGB_Window, self).__init__()
         self.setupUi(self)

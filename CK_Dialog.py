@@ -5,8 +5,7 @@ from PyQt5.QtCore import *
 import serial.tools.list_ports
 from PyQt5.QtSerialPort import QSerialPortInfo
 
-from CK_Dialog_ui import Ui_CK_Dialog
-
+from ui_CK_Dialog import Ui_CK_Dialog
 
 class CK_Dialog(QDialog, Ui_CK_Dialog):
     serialSignal = pyqtSignal(str, str, str, str, str)

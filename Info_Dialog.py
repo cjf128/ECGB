@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 
-from Info_Dialog_ui import Ui_Info_Dialog
+from ui_Info_Dialog import Ui_Info_Dialog
 
 class Info_Dialog(QDialog, Ui_Info_Dialog):
     setSignal = pyqtSignal(bool)
