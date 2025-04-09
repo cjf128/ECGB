@@ -1,7 +1,7 @@
 import sys
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
+from PyQt5.QtWidgets import QDialog, QApplication
+from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import pyqtSignal
 
 from ui_Info_Dialog import Ui_Info_Dialog
 
@@ -31,4 +31,4 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = Info_Dialog()
     window.show()
-    sys.exit(app.exec())
+    sys.exit(app.exec_())

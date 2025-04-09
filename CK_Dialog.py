@@ -1,17 +1,16 @@
 import sys
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
-import serial.tools.list_ports
+from PyQt5.QtWidgets import QApplication, QDialog
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtSerialPort import QSerialPortInfo
-
+from PyQt5.QtGui import QIcon
 from ui_CK_Dialog import Ui_CK_Dialog
+
 
 class CK_Dialog(QDialog, Ui_CK_Dialog):
     serialSignal = pyqtSignal(str, str, str, str, str)
 
     def __init__(self, parent=None):
-        super(CK_Dialog, self).__init__()
+        super(CK_Dialog, self).__init__(parent)
         self.setupUi(self)
         self.setWindowIcon(QIcon('./icons/ECGB.png'))
         self.setFixedSize(300, 300)
@@ -47,4 +46,4 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = CK_Dialog()
     window.show()
-    sys.exit(app.exec())
+    sys.exit(app.exec_())
