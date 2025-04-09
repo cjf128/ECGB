@@ -95,7 +95,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         #     return
     
     def serial_slot(self, portNum, baudRate, dataBits, stopBits, parity):
-        if self.simulated_timer.isActive():
+        if self.simulated_timer.isActive() and self.waveform_timer.isActive():
             self.simulated_timer.stop()
             self.waveform_timer.stop()
 
@@ -124,7 +124,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                     # 启动模拟数据定时器
                     self.simulated_timer.start(20)  # 50Hz采样率（20ms间隔）
                     self.CK_Dialog.Open_btn.setText("关闭串口")
-                    self.CK_Dialog.hide()
+                    self.CK_Dialog.hide() # 串口对话框
                 else:
                     self.ser.port = portNum
                     self.ser.baudrate = int(baudRate)
@@ -142,7 +142,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                     self.CK_Dialog.Open_btn.setText("关闭串口")
                     self.CK_Dialog.hide()
 
-    # 在类定义中添加以下方法
     def generate_simulated_data(self):
         """生成符合协议规范的心电模拟数据"""
         # 创建原始数据包（模块ID + 数据头 + 二级ID + 6数据 + 校验和）

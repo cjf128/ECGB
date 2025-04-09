@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+
+# Form implementation generated from reading ui file 'd:\Python\ECGB\MainWindow.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.9
 #
@@ -12,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_ECGB_Window(object):
     def setupUi(self, ECGB_Window):
         ECGB_Window.setObjectName("ECGB_Window")
-        ECGB_Window.resize(1108, 800)
+        ECGB_Window.resize(1108, 849)
         self.centralwidget = QtWidgets.QWidget(ECGB_Window)
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
