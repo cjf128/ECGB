@@ -1,15 +1,18 @@
 import datetime
 import math
+import random
 import sys
-from PyQt5.QtWidgets import QMainWindow, QFrame, QGraphicsScene, QMessageBox, QApplication
+from PyQt5.QtWidgets import QMainWindow, QFrame, QGraphicsScene, QMessageBox, QApplication, QDialog, QPushButton
 from PyQt5.QtCore import QTimer, Qt, QDateTime, pyqtSignal
 from PyQt5.QtGui import QIcon, QPainterPath, QPen, QColor, QGuiApplication
+from PyQt5.QtMultimedia import QSound
 
 import serial
 from CK_Dialog import CK_Dialog
 from Info_Dialog import Info_Dialog
 from PackUnpack import PackUnpack
 
+from test import AlarmDialog
 from ui_MainWindow import Ui_ECGB_Window
 
 
@@ -19,6 +22,24 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.setupUi(self)
         self.setWindowIcon(QIcon('./icons/ECGB.png'))
         self.setWindowTitle('ECGB')
+
+        # 初始化报警阈值（默认值）
+        self.alarm_thresholds = {
+            'urgent': 120, 
+            'normal': 100
+        }
+        
+        # 报警音效初始化
+        self.alarm_sound = QSound("alarm.wav")  # 推荐使用网页5/7的警报声
+        
+        # 创建设置按钮
+        self.setting_btn = QPushButton("⚙", self)
+        self.setting_btn.clicked.connect(self.show_setting_dialog)
+        
+        # 监测定时器
+        self.monitor_timer = QTimer()
+        self.monitor_timer.timeout.connect(self.check_heart_rate)
+        self.monitor_timer.start(1000)  # 每秒检测
 
         # 创建定时器
         self.clock_timer = QTimer(self)
@@ -34,7 +55,43 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.Info_Dialog.setWindowModality(Qt.ApplicationModal)
         self.Info_Dialog.setSignal.connect(self.text_slot)
 
+        self.HR_threshold = 70  # 心率阈值
+        self.RESP_threshold = 14
+        self.SPO2_threshold = 94
+
         self.config()
+    
+    def show_setting_dialog(self):
+        dialog = AlarmDialog(self)
+        dialog.urgent_spin.setValue(self.alarm_thresholds['urgent'])
+        dialog.normal_spin.setValue(self.alarm_thresholds['normal'])
+        
+        if dialog.exec_() == QDialog.Accepted:
+            # 保存新阈值
+            self.alarm_thresholds['urgent'] = dialog.urgent_spin.value()
+            self.alarm_thresholds['normal'] = dialog.normal_spin.value()
+            
+    def check_heart_rate(self):
+        current_hr = self.current_hr  # 解析当前值
+        
+        if current_hr >= self.alarm_thresholds['urgent']:
+            self.trigger_alarm(level='urgent')
+        elif current_hr >= self.alarm_thresholds['normal']:
+            self.trigger_alarm(level='normal')
+        else:
+            self.stop_alarm()
+
+    def trigger_alarm(self, level):
+        # 视觉提示
+        self.HR_label.setStyleSheet("color: red;" if level=='urgent' else "color: orange;")
+        
+        # 声音提示
+        if not self.alarm_sound.isPlaying():
+            self.alarm_sound.play()
+            
+    def stop_alarm(self):
+        self.HR_label.setStyleSheet("color: white;")
+        self.alarm_sound.stop()
 
     def config(self):
         self.CK_btn.clicked.connect(self.CK_slot)
@@ -73,17 +130,15 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.waveform_timer.start(50)
 
         # 添加心率更新定时器（每秒更新一次）
-        # self.hr_update_timer = QTimer(self)
-        # self.hr_update_timer.timeout.connect(self.update_hr_display)
-        # self.hr_update_timer.start(1000)
-
-        # 处理已解包数据的定时器
-        self.procDataTimer = QTimer(self)
-        self.procDataTimer.timeout.connect(self.data_process)
+        self.hr_update_timer = QTimer(self)
+        self.hr_update_timer.timeout.connect(self.update_hr_display)
+        self.hr_update_timer.start(1000)
 
         # 信号模拟
         self.simulated_timer = QTimer(self)
         self.simulated_timer.timeout.connect(self.generate_simulated_data)
+
+        self.current_hr = 0  # 初始化心率值
 
     def CK_slot(self):
         self.CK_Dialog.show()
@@ -109,7 +164,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         else:
             if self.ser.isOpen():
                 self.serialPortTimer.stop()
-                # self.procDataTimer.stop()
                 try:
                     self.ser.close()
                 except:
@@ -165,6 +219,11 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             0x00,        # 位置8: 保留字节
             0x00         # 位置9: 校验和（将由packData填充）
         ]
+
+        # 模拟心率波动（±5BPM随机变化）
+        base_hr = 72  # 基础心率值
+        hr_variation = random.randint(-5, 5)
+        self.current_hr = base_hr + hr_variation
         
         # 使用协议类打包数据
         if self.mPackUnpck.packData(raw_packet):
@@ -173,6 +232,14 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             # 模拟接收数据处理
             self.process_received_data(packed_data)
 
+    def update_hr_display(self):
+        """更新心率显示标签"""
+        self.HR_label.setText(f"{self.current_hr}")
+        if self.current_hr >= self.HR_threshold:
+            self.HR_label.setStyleSheet("color: #ff0000")
+        else:
+            self.HR_label.setStyleSheet("color: #00ff00")
+        
     def process_received_data(self, data):
         """处理接收到的二进制数据"""
         # 协议解析（逐个字节处理）
@@ -188,13 +255,19 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 # 保持数据队列长度
                 max_points = 5 * 250  # 存储5秒数据（假设250Hz采样率）
                 self.mECG1WaveList = self.mECG1WaveList[-max_points:]
+
+                # 根据协议结构获取心率值（示例：假设心率在位置5-6）
+                # if unpacked[0] == 0x01:  # 确认模块ID
+                #     if unpacked[2] == 0xB1:  # 确认二级ID为心率
+                #         # 解析16位心率值（大端序）
+                #         self.current_hr = (unpacked[5] << 8) | unpacked[6]
+            
     
     def data_receive(self):
         try:
             num = self.ser.inWaiting()
         except:
             self.serialPortTimer.stop()
-            # self.procDataTimer.stop()
             try:
                 self.ser.close()
             except:
