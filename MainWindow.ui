@@ -1413,7 +1413,7 @@ background-color: rgb(51, 232, 220);</string>
                 <property name="font">
                  <font>
                   <family>Agency FB</family>
-                  <pointsize>80</pointsize>
+                  <pointsize>60</pointsize>
                  </font>
                 </property>
                 <property name="styleSheet">
@@ -1469,7 +1469,7 @@ background-color: rgb(51, 232, 220);</string>
                 <property name="font">
                  <font>
                   <family>Agency FB</family>
-                  <pointsize>80</pointsize>
+                  <pointsize>60</pointsize>
                  </font>
                 </property>
                 <property name="styleSheet">

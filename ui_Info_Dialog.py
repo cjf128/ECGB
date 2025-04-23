@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+
+# Form implementation generated from reading ui file 'd:\PythonCode\ECGB\Info_Dialog.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.9
 #
@@ -99,6 +101,11 @@ class Ui_Info_Dialog(object):
         self.comboBox_2.setObjectName("comboBox_2")
         self.comboBox_2.addItem("")
         self.comboBox_2.addItem("")
+        self.comboBox_2.addItem("")
+        self.comboBox_2.addItem("")
+        self.comboBox_2.addItem("")
+        self.comboBox_2.addItem("")
+        self.comboBox_2.addItem("")
         self.horizontalLayout_3.addWidget(self.comboBox_2)
         self.verticalLayout.addLayout(self.horizontalLayout_3)
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
@@ -143,6 +150,11 @@ class Ui_Info_Dialog(object):
         self.comboBox.setItemText(1, _translate("Info_Dialog", "女"))
         self.dataBitsLabel.setText(_translate("Info_Dialog", "模式:"))
         self.comboBox_2.setItemText(0, _translate("Info_Dialog", "成人"))
-        self.comboBox_2.setItemText(1, _translate("Info_Dialog", "儿童"))
+        self.comboBox_2.setItemText(1, _translate("Info_Dialog", "新生儿（0-1月）"))
+        self.comboBox_2.setItemText(2, _translate("Info_Dialog", "婴儿（1月-1岁）"))
+        self.comboBox_2.setItemText(3, _translate("Info_Dialog", "幼儿（1-3岁）"))
+        self.comboBox_2.setItemText(4, _translate("Info_Dialog", "学龄前儿童（3-6岁）"))
+        self.comboBox_2.setItemText(5, _translate("Info_Dialog", "学龄儿童（6-12岁）"))
+        self.comboBox_2.setItemText(6, _translate("Info_Dialog", "青少年（12-18岁）"))
         self.QD_btn.setText(_translate("Info_Dialog", "确认"))
         self.Cancel_btn.setText(_translate("Info_Dialog", "取消"))

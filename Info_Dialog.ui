@@ -198,7 +198,32 @@
        </item>
        <item>
         <property name="text">
-         <string>儿童</string>
+         <string>新生儿（0-1月）</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>婴儿（1月-1岁）</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>幼儿（1-3岁）</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>学龄前儿童（3-6岁）</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>学龄儿童（6-12岁）</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>青少年（12-18岁）</string>
         </property>
        </item>
       </widget>

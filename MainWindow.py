@@ -1,4 +1,4 @@
-import datetime
+
 import math
 import random
 import sys
@@ -10,12 +10,15 @@ from PyQt5.QtMultimedia import QSound, QMediaPlayer, QMediaContent
 import serial
 from CK_Dialog import CK_Dialog
 from Info_Dialog import Info_Dialog
+from BJ_Dialog import BJ_Dialog
 from PackUnpack import PackUnpack
 
+from SJ_Dialog import SJ_Dialog
 from ui_MainWindow import Ui_ECGB_Window
 
 
 class MainWindow(QMainWindow, Ui_ECGB_Window):
+    THRESHOLD_SIGNAL = pyqtSignal(int, int, int, int, int)
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setupUi(self)
@@ -23,19 +26,35 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.setWindowTitle('ECGB')
 
         self.CK_Dialog = CK_Dialog()
+        self.CK_Dialog.setWindowTitle('串口设置')
         self.CK_Dialog.setWindowModality(Qt.ApplicationModal) 
         self.CK_Dialog.hide()
         self.CK_Dialog.serialSignal.connect(self.serial_slot)
 
         self.Info_Dialog = Info_Dialog()
+        self.Info_Dialog.setWindowTitle('信息设置')
         self.Info_Dialog.setWindowModality(Qt.ApplicationModal)
         self.Info_Dialog.setSignal.connect(self.text_slot)
+
+        self.BJ_Dialog = BJ_Dialog()
+        self.BJ_Dialog.setWindowTitle('阈值设置')
+        self.BJ_Dialog.setWindowModality(Qt.ApplicationModal)
+        self.BJ_Dialog.thresholdSignal.connect(self.threshold_slot)
+
+        self.SJ_Dialog = SJ_Dialog()
+        self.SJ_Dialog.setWindowTitle('数据保存')
+        self.SJ_Dialog.setWindowModality(Qt.ApplicationModal)
+        self.SJ_Dialog.setSignal.connect(self.SJ_slot)
         self.config()
 
     def config(self):
         self.CK_btn.clicked.connect(self.CK_slot)
         self.XX_btn.clicked.connect(self.Info_Dialog.show)
         self.JC_btn.clicked.connect(self.JC_slot)
+        self.BJ_btn.clicked.connect(self.BJ_Dialog.show)
+        self.SJ_btn.clicked.connect(self.SJ_slot)
+
+        self.THRESHOLD_SIGNAL.connect(self.BJ_Dialog.threshold_slot)
 
         self.serialPortTimer = QTimer(self)
         self.serialPortTimer.timeout.connect(self.data_receive)
@@ -45,6 +64,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.mECG1WaveList = []
         self.mRESPWaveList = []
         self.mSPO2WaveList = []
+        self.mBPMWaveList = []
+        self.time_list = []
 
         self.HR_waveform_scene = QGraphicsScene()
         self.ecg1_graphicsView.setScene(self.HR_waveform_scene)
@@ -103,10 +124,10 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.is_alarming = False
 
         self.HR_threshold_low = 60
-        self.HR_threshold_high = 130
+        self.HR_threshold_high = 100
         self.RESP_threshold_low = 12
-        self.RESP_threshold_high = 26
-        self.SPO2_threshold_low = 92
+        self.RESP_threshold_high = 24
+        self.SPO2_threshold_low = 94
 
         self.simulated_time = 1
         self.simulated_state = False
@@ -118,6 +139,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.HR_blink_state = False
         self.RESP_blink_state = False
         self.SPO2_blink_state = False
+        self.BPM_blink_state = False
 
 
     def CK_slot(self):
@@ -132,7 +154,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
     def serial_slot(self, portNum, baudRate, dataBits, stopBits, parity):
         if self.simulated_state == True:
             self.simulated_timer.stop()
-            self.waveform_hr_timer.stop()
             self.waveform_hr_timer.stop()
             self.waveform_resp_timer.stop()
             self.waveform_spo2_timer.stop()
@@ -210,7 +231,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             except Exception as e:
                 self.status_label.setText(f"接收错误: {str(e)}")
                 self.status_label.setStyleSheet("color: #ff0000")
-
+            
     def generate_simulated_data(self):
         """生成符合协议规范的心电模拟数据"""
         # 生成心电数值
@@ -252,6 +273,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             packed_data = bytes(raw_packet)
             # 模拟接收数据处理
             self.process_received_data(packed_data)
+
+
 
     def update_hr_display(self):
         """更新心率显示标签"""
@@ -325,6 +348,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
     def update_spo2_display(self):
         """更新脉率显示标签"""
         self.SpO2_label.setText(f"{self.current_spo2}")
+        self.BPM_label.setText(f"{self.current_hr}")
         if self.current_spo2 > 0 and self.current_spo2 <= self.SPO2_threshold_low:
             if not self.is_alarming:
                 self.alarm_player.play()
@@ -334,16 +358,25 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.alarm_player.play()
                     
             if self.spo2_update_timer.interval() != 500:
-                self.spo2_update_timer.setInterval(500) # 周期改为500ms
+                self.spo2_update_timer.setInterval(500)
                 self.spo2_update_timer.start()
 
             if self.SPO2_blink_state:
-                self.SpO2_label.setFont(QFont("Agency FB", 120))
+                self.SpO2_label.setFont(QFont("Agency FB", 80))
                 self.SpO2_label.setStyleSheet("color: #ff0000")
             else:
-                self.SpO2_label.setFont(QFont("Agency FB", 130))
+                self.SpO2_label.setFont(QFont("Agency FB", 90))
 
             self.SPO2_blink_state = not self.SPO2_blink_state
+
+            if self.BPM_blink_state:
+                self.BPM_label.setFont(QFont("Agency FB", 80))
+                self.BPM_label.setStyleSheet("color: #ff0000")
+            else:
+                self.BPM_label.setFont(QFont("Agency FB", 90))
+
+            self.BPM_blink_state = not self.BPM_blink_state
+
         else:
             if self.is_alarming:
                 self.alarm_player.stop()
@@ -352,9 +385,13 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             if self.spo2_update_timer.interval() != 1000:
                 self.spo2_update_timer.setInterval(1000)
                 self.spo2_update_timer.start()
-            self.SpO2_label.setFont(QFont("Agency FB", 120))
+            self.SpO2_label.setFont(QFont("Agency FB", 80))
             self.SpO2_label.setStyleSheet("color: #33e8dc")
-            self.SPO2_blink_state = False  # 重置闪烁状态            
+
+            self.BPM_label.setFont(QFont("Agency FB", 80))
+            self.BPM_label.setStyleSheet("color: #33e8dc")
+            self.SPO2_blink_state = False
+            self.BPM_blink_state = False
         
     def process_received_data(self, data):
         """处理接收到的二进制数据"""
@@ -369,10 +406,13 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                         # 解析16位心率值（大端序）
                         self.current_hr = (unpacked[3] << 8) | unpacked[4]
                         self.mECG1WaveList.append(self.current_hr)
+                        self.mBPMWaveList.append(self.current_hr)
 
                         # 保持数据队列长度
                         max_points = 10 * 50
                         self.mECG1WaveList = self.mECG1WaveList[-max_points:]
+                        self.mBPMWaveList = self.mBPMWaveList[-max_points:]
+                        
 
                     if unpacked[2] == 0xB1:
                         # 解析16位心率值（大端序）
@@ -527,24 +567,74 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
             if self.mode_label.text() == "成人":
                 self.HR_threshold_low = 60
-                self.HR_threshold_high = 130
-                self.RESP_threshold_low = 12
-                self.RESP_threshold_high = 26
-                self.SPO2_threshold_low = 92
-
-            elif self.mode_label.text() == "儿童":
-                self.HR_threshold_low = 60
-                self.HR_threshold_high = 120
+                self.HR_threshold_high = 100
                 self.RESP_threshold_low = 12
                 self.RESP_threshold_high = 24
                 self.SPO2_threshold_low = 94
 
+            elif "新生儿" in self.mode_label.text():
+                self.HR_threshold_low = 100
+                self.HR_threshold_high = 160
+                self.RESP_threshold_low = 30
+                self.RESP_threshold_high = 60
+                self.SPO2_threshold_low = 92
+
+            elif "婴儿" in self.mode_label.text():
+                self.HR_threshold_low = 90
+                self.HR_threshold_high = 150
+                self.RESP_threshold_low = 30
+                self.RESP_threshold_high = 50
+                self.SPO2_threshold_low = 92
+
+            elif "幼儿" in self.mode_label.text():
+                self.HR_threshold_low = 70
+                self.HR_threshold_high = 110
+                self.RESP_threshold_low = 25
+                self.RESP_threshold_high = 40
+                self.SPO2_threshold_low = 94
+
+            elif "学龄前" in self.mode_label.text():
+                self.HR_threshold_low = 65
+                self.HR_threshold_high = 110
+                self.RESP_threshold_low = 20
+                self.RESP_threshold_high = 34
+                self.SPO2_threshold_low = 94
+
+            elif "学龄" in self.mode_label.text():
+                self.HR_threshold_low = 60
+                self.HR_threshold_high = 95
+                self.RESP_threshold_low = 18
+                self.RESP_threshold_high = 30
+                self.SPO2_threshold_low = 94
+
+            elif "青少年" in self.mode_label.text():
+                self.HR_threshold_low = 60
+                self.HR_threshold_high = 100
+                self.RESP_threshold_low = 12
+                self.RESP_threshold_high = 20
+                self.SPO2_threshold_low = 94
+
+            self.THRESHOLD_SIGNAL.emit(self.HR_threshold_low, self.HR_threshold_high, self.RESP_threshold_low, self.RESP_threshold_high, self.SPO2_threshold_low)
 
             self.Info_Dialog.close()
         elif set_signal == 0:
             QMessageBox.critical(self, "Error", "请填入姓名！")
             return
+        
+    def threshold_slot(self, hr_low, hr_high, resp_low, resp_high, spo2_low):
+        self.HR_threshold_low = hr_low
+        self.HR_threshold_high = hr_high
+        self.RESP_threshold_low = resp_low
+        self.RESP_threshold_high = resp_high
+        self.SPO2_threshold_low = spo2_low
+        QMessageBox.information(self, "提示", "阈值设置成功！")
 
+        self.THRESHOLD_SIGNAL.emit(self.HR_threshold_low, self.HR_threshold_high, self.RESP_threshold_low, self.RESP_threshold_high, self.SPO2_threshold_low)
+
+        self.BJ_Dialog.close()
+    
+    def SJ_slot(self, hr, resp, spo2, bpm):
+        pass
 
 
 if __name__ == '__main__':
