@@ -1,4 +1,5 @@
 
+import copy
 import math
 import random
 import sys
@@ -213,7 +214,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             self.waveform_spo2_timer.start(20)
 
             self.status_label.setText("串口已打开")
-            self.status_label.setStylesheet("color: #ffffff")
+            self.status_label.setStyleSheet("color: #ffffff")
             self.CK_Dialog.Open_btn.setText("关闭串口")
             self.CK_Dialog.hide()
     
@@ -231,6 +232,24 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             except Exception as e:
                 self.status_label.setText(f"接收错误: {str(e)}")
                 self.status_label.setStyleSheet("color: #ff0000")
+    
+    def process_received_data(self, data):
+        """处理接收到的二进制数据"""
+        # 协议解析（逐个字节处理）
+        for byte in data:
+            if self.mPackUnpck.unpackData(byte):
+                # 成功解析到完整包时获取数据
+                unpacked = self.mPackUnpck.getUnpackRslt()
+
+                if unpacked[0] == 0x13:  # 确认模块ID
+                    if unpacked[2] == 0x02:  # 确认二级ID为心率
+                        # 解析血氧
+                        self.current_spo2 = (unpacked[3] << 8) | unpacked[4]
+                        self.mSPO2WaveList.append(self.current_spo2)
+
+                        # 保持数据队列长度
+                        max_points = 10 * 50
+                        self.mSPO2WaveList = self.mSPO2WaveList[-max_points:]
             
     def generate_simulated_data(self):
         """生成符合协议规范的心电模拟数据"""
@@ -273,8 +292,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             packed_data = bytes(raw_packet)
             # 模拟接收数据处理
             self.process_received_data(packed_data)
-
-
 
     def update_hr_display(self):
         """更新心率显示标签"""
@@ -393,44 +410,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             self.SPO2_blink_state = False
             self.BPM_blink_state = False
         
-    def process_received_data(self, data):
-        """处理接收到的二进制数据"""
-        # 协议解析（逐个字节处理）
-        for byte in data:
-            if self.mPackUnpck.unpackData(byte):
-                # 成功解析到完整包时获取数据
-                unpacked = self.mPackUnpck.getUnpackRslt()
-
-                if unpacked[0] == 0x01:  # 确认模块ID
-                    if unpacked[2] == 0xA1:  # 确认二级ID为心率
-                        # 解析16位心率值（大端序）
-                        self.current_hr = (unpacked[3] << 8) | unpacked[4]
-                        self.mECG1WaveList.append(self.current_hr)
-                        self.mBPMWaveList.append(self.current_hr)
-
-                        # 保持数据队列长度
-                        max_points = 10 * 50
-                        self.mECG1WaveList = self.mECG1WaveList[-max_points:]
-                        self.mBPMWaveList = self.mBPMWaveList[-max_points:]
-                        
-
-                    if unpacked[2] == 0xB1:
-                        # 解析16位心率值（大端序）
-                        self.current_resp = (unpacked[3] << 8) | unpacked[4]
-                        self.mRESPWaveList.append(self.current_resp)
-
-                        # 保持数据队列长度
-                        max_points = 10 * 50
-                        self.mRESPWaveList = self.mRESPWaveList[-max_points:]
-
-                    if unpacked[2] == 0xC1:  # 确认二级ID为心率
-                        # 解析16位心率值（大端序）
-                        self.current_spo2 = (unpacked[3] << 8) | unpacked[4]
-                        self.mSPO2WaveList.append(self.current_spo2)
-
-                        # 保持数据队列长度
-                        max_points = 10 * 50
-                        self.mSPO2WaveList = self.mSPO2WaveList[-max_points:]
     
     def update_hr_waveform(self):
         if not self.mECG1WaveList:
@@ -503,7 +482,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         if not self.mSPO2WaveList:
             return
         
-
         # 清空旧波形
         self.SPO2_waveform_scene.clear()
 
