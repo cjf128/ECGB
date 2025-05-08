@@ -3,10 +3,10 @@ import copy
 import math
 import random
 import sys
-from PyQt5.QtWidgets import QMainWindow, QFrame, QGraphicsScene, QMessageBox, QApplication, QDialog, QPushButton
+from PyQt5.QtWidgets import QMainWindow, QFrame, QGraphicsScene, QMessageBox, QApplication, QGraphicsPathItem
 from PyQt5.QtCore import QTimer, Qt, QDateTime, pyqtSignal, QUrl
-from PyQt5.QtGui import QIcon, QPainterPath, QPen, QColor, QGuiApplication, QFont
-from PyQt5.QtMultimedia import QSound, QMediaPlayer, QMediaContent
+from PyQt5.QtGui import QIcon, QPainterPath, QPen, QGuiApplication, QFont
+from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 
 import serial
 from CK_Dialog import CK_Dialog
@@ -57,9 +57,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
         self.THRESHOLD_SIGNAL.connect(self.BJ_Dialog.threshold_slot)
 
-        self.serialPortTimer = QTimer(self)
-        self.serialPortTimer.timeout.connect(self.data_receive)
-
         self.ser = serial.Serial()
         self.mPackUnpck = PackUnpack()
         self.mECG1WaveList = []
@@ -90,16 +87,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.clock_timer = QTimer(self)
         self.clock_timer.timeout.connect(self.update_time)
         self.clock_timer.start(1000)
-        
-        # 波形更新定时器
-        self.waveform_hr_timer = QTimer(self)
-        self.waveform_hr_timer.timeout.connect(self.update_hr_waveform)
-
-        self.waveform_resp_timer = QTimer(self)
-        self.waveform_resp_timer.timeout.connect(self.update_resp_waveform)
-
-        self.waveform_spo2_timer = QTimer(self)
-        self.waveform_spo2_timer.timeout.connect(self.update_spo2_waveform)
 
         # 添加心率更新定时器（每秒更新一次）
         self.hr_update_timer = QTimer(self)
@@ -120,6 +107,12 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.simulated_timer = QTimer(self)
         self.simulated_timer.timeout.connect(self.generate_simulated_data)
 
+        self.serialPortTimer = QTimer(self)
+        self.serialPortTimer.timeout.connect(self.data_receive)
+
+        self.procDataTimer = QTimer(self)
+        self.procDataTimer.timeout.connect(self.data_process)
+
         self.alarm_player = QMediaPlayer()
         self.alarm_player.setMedia(QMediaContent(QUrl.fromLocalFile('alarm.mp3')))
         self.is_alarming = False
@@ -129,6 +122,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.RESP_threshold_low = 12
         self.RESP_threshold_high = 24
         self.SPO2_threshold_low = 94
+        self.maxPoints = 50
 
         self.simulated_time = 1
         self.simulated_state = False
@@ -141,6 +135,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.RESP_blink_state = False
         self.SPO2_blink_state = False
         self.BPM_blink_state = False
+
+        self.mPackAfterUnpackArr = []
 
 
     def CK_slot(self):
@@ -155,9 +151,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
     def serial_slot(self, portNum, baudRate, dataBits, stopBits, parity):
         if self.simulated_state == True:
             self.simulated_timer.stop()
-            self.waveform_hr_timer.stop()
-            self.waveform_resp_timer.stop()
-            self.waveform_spo2_timer.stop()
 
             self.HR_waveform_scene.clear()
             self.RESP_waveform_scene.clear()
@@ -172,6 +165,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         
         if self.ser.isOpen():
             self.serialPortTimer.stop()
+            self.procDataTimer.stop()
             try:
                 self.ser.close()
             except:
@@ -188,11 +182,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             self.status_label.setText("模拟数据已启动")
             self.status_label.setStyleSheet("color: #ffffff")
 
-            # 启动模拟数据定时器
-            self.waveform_hr_timer.start(20)
-            self.waveform_resp_timer.start(20)
-            self.waveform_spo2_timer.start(20)
-
             self.simulated_timer.start(20)
             self.CK_Dialog.Open_btn.setText("关闭串口")
             self.CK_Dialog.hide() # 串口对话框
@@ -208,49 +197,95 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 QMessageBox.critical(self, "Error", "串口打开失败")
                 return
 
-            self.serialPortTimer.start(20)
-            self.waveform_hr_timer.start(20)
-            self.waveform_resp_timer.start(20)
-            self.waveform_spo2_timer.start(20)
+            self.serialPortTimer.start(2)
+            self.procDataTimer.start(20)
 
             self.status_label.setText("串口已打开")
             self.status_label.setStyleSheet("color: #ffffff")
             self.CK_Dialog.Open_btn.setText("关闭串口")
             self.CK_Dialog.hide()
     
+    # 处理串口接收的数据
     def data_receive(self):
-        """实时接收串口数据"""
-        if self.ser.isOpen():
+        try:
+            num = self.ser.inWaiting()  # 获取当前串口缓冲区的数据量
+        except:
+            self.serialPortTimer.stop()
+            self.procDataTimer.stop()
             try:
-                # 获取接收缓冲区字节数
-                bytes_to_read = self.ser.in_waiting
-                if bytes_to_read > 0:
-                    # 读取所有可用数据
-                    received_data = self.ser.read(bytes_to_read)
-                    # 调用协议解析方法
-                    self.process_received_data(received_data)
-            except Exception as e:
-                self.status_label.setText(f"接收错误: {str(e)}")
-                self.status_label.setStyleSheet("color: #ff0000")
-    
-    def process_received_data(self, data):
-        """处理接收到的二进制数据"""
-        # 协议解析（逐个字节处理）
-        for byte in data:
-            if self.mPackUnpck.unpackData(byte):
-                # 成功解析到完整包时获取数据
-                unpacked = self.mPackUnpck.getUnpackRslt()
+                self.ser.close()
+            except:
+                pass
+            return None
+        if num > 0:
+            data = self.ser.read(num)  # 读取当前串口缓冲区的数据
+            # 通过for循环遍历data中的数据，直到获取一个完整的数据包时，findPack才为True
+            for i in range(0, len(data)):
+                findPack = self.mPackUnpck.unpackData(data[i])
+                # 解包成功，将数据保存到mPackAfterUnpackArr列表中
+                if findPack:
+                    temp = self.mPackUnpck.getUnpackRslt()
+                    self.mPackAfterUnpackArr.append(copy.deepcopy(temp))
+        else:
+            pass
 
-                if unpacked[0] == 0x13:  # 确认模块ID
-                    if unpacked[2] == 0x02:  # 确认二级ID为心率
-                        # 解析血氧
-                        self.current_spo2 = (unpacked[3] << 8) | unpacked[4]
-                        self.mSPO2WaveList.append(self.current_spo2)
+    # 处理已解包的数据
+    def data_process(self):
+        num = len(self.mPackAfterUnpackArr)
+        if num > 0:
+            for i in range(num):
+                if self.mPackAfterUnpackArr[i][0] == 0x13:
+                    self.analyzeSPO2Data(self.mPackAfterUnpackArr[i])
+            del self.mPackAfterUnpackArr[0:num]
+        if len(self.mSPO2WaveList) > 10:
+            print("SPO2WaveList:", self.mSPO2WaveList)
+            self.drawSPO2Wave()
 
-                        # 保持数据队列长度
-                        max_points = 10 * 50
-                        self.mSPO2WaveList = self.mSPO2WaveList[-max_points:]
-            
+    # 处理心电数据
+    def analyzeSPO2Data(self, data):
+        if data[1] == 0x02:
+            spo2Data = data[2] << 8 | data[3]
+            self.mSPO2WaveList.append(spo2Data)
+        # elif data[1] == 0x03:
+        #     if data[2] == 0:
+        #         self.connectStateLabel.setText("连接正常")
+        #         self.connectStateLabel.setStyleSheet("color:green")
+        #     elif data[2] == 1:
+        #         self.connectStateLabel.setText("导联脱落")
+        #         self.connectStateLabel.setStyleSheet("color:red")
+        elif data[1] == 0x04:
+            self.current_spo2 = (data[2] << 8) | data[3]
+            self.SpO2_label.setText(self.current_spo2)
+
+    def drawSPO2Wave(self):
+        if not self.mSPO2WaveList:
+            return
+
+        # 清除旧内容（可选）
+        self.SPO2_waveform_scene.clear()
+
+        view_width = self.spo2_graphicsView.width()
+        view_height = self.spo2_graphicsView.height()
+
+        scale_x = view_width / self.maxPoints
+        scale_y = view_height / 2 / 4096
+
+        path = QPainterPath()
+        path.moveTo(0, (self.mSPO2WaveList[0] - 2048) * scale_y + view_height / 2)
+
+        for i in range(1, len(self.mSPO2WaveList)):
+            x = i * scale_x
+            y = (self.mSPO2WaveList[i] - 2048) * scale_y + view_height / 2
+            path.lineTo(x, y)
+
+        path_item = QGraphicsPathItem(path)
+        path_item.setPen(QPen("#33e8dc", 1))
+        self.SPO2_waveform_scene.addItem(path_item)
+
+        # 保留最近 maxPoints 个点
+        if len(self.mSPO2WaveList) > self.maxPoints:
+            self.mSPO2WaveList = self.mSPO2WaveList[-self.maxPoints:]
+
     def generate_simulated_data(self):
         """生成符合协议规范的心电模拟数据"""
         # 生成心电数值
@@ -291,7 +326,46 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             # 获取打包后的字节流
             packed_data = bytes(raw_packet)
             # 模拟接收数据处理
-            self.process_received_data(packed_data)
+            self.process_simulated_data(packed_data)
+    
+    def process_simulated_data(self, data):
+        """处理接收到的二进制数据"""
+        # 协议解析（逐个字节处理）
+        for byte in data:
+            if self.mPackUnpck.unpackData(byte):
+                # 成功解析到完整包时获取数据
+                unpacked = self.mPackUnpck.getUnpackRslt()
+
+                if unpacked[0] == 0x01:  # 确认模块ID
+                    if unpacked[2] == 0xA1:  # 确认二级ID为心率
+                        # 解析16位心率值（大端序）
+                        self.current_hr = (unpacked[3] << 8) | unpacked[4]
+                        self.mECG1WaveList.append(self.current_hr)
+                        self.mBPMWaveList.append(self.current_hr)
+
+                        # 保持数据队列长度
+                        max_points = 10 * 50
+                        self.mECG1WaveList = self.mECG1WaveList[-max_points:]
+                        self.mBPMWaveList = self.mBPMWaveList[-max_points:]
+                        
+
+                    if unpacked[2] == 0xB1:
+                        # 解析16位心率值（大端序）
+                        self.current_resp = (unpacked[3] << 8) | unpacked[4]
+                        self.mRESPWaveList.append(self.current_resp)
+
+                        # 保持数据队列长度
+                        max_points = 10 * 50
+                        self.mRESPWaveList = self.mRESPWaveList[-max_points:]
+
+                    if unpacked[2] == 0xC1:  # 确认二级ID为心率
+                        # 解析16位心率值（大端序）
+                        self.current_spo2 = (unpacked[3] << 8) | unpacked[4]
+                        self.mSPO2WaveList.append(self.current_spo2)
+
+                        # 保持数据队列长度
+                        max_points = 10 * 50
+                        self.mSPO2WaveList = self.mSPO2WaveList[-max_points:]
 
     def update_hr_display(self):
         """更新心率显示标签"""
@@ -409,108 +483,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             self.BPM_label.setStyleSheet("color: #33e8dc")
             self.SPO2_blink_state = False
             self.BPM_blink_state = False
-        
-    
-    def update_hr_waveform(self):
-        if not self.mECG1WaveList:
-            return
-        
-        # 清空旧波形
-        self.HR_waveform_scene.clear()
-        
-        # 创建新路径
-        path = QPainterPath()
-        view_width = self.ecg1_graphicsView.width()
-        view_height = self.ecg1_graphicsView.height()
-        
-        # 计算坐标参数
-        x_step = 3
-        max_points = view_width // x_step
-        start_idx = max(0, len(self.mECG1WaveList) - max_points)
-        y_scale = 6
-        y_offset = view_height / 50
-        
-        # 绘制路径
-        x = 0
-        path.moveTo(x, y_offset - self.mECG1WaveList[start_idx] * y_scale)
-        for i in range(start_idx + 1, len(self.mECG1WaveList)):
-            x += x_step
-            y = y_offset - self.mECG1WaveList[i] * y_scale
-            path.lineTo(x, y)
-        
-        # 绘制到场景
-        self.HR_waveform_scene.addPath(path, QPen(QColor("#00ff00"), 2))
-        
-        # 自动滚动视图
-        if x > view_width * 0.8:
-            self.ecg1_graphicsView.centerOn(x, y_offset)
-
-    def update_resp_waveform(self):
-        if not self.mRESPWaveList:
-            return
-        
-        # 清空旧波形
-        self.RESP_waveform_scene.clear()
-        
-        # 创建新路径
-        path = QPainterPath()
-        view_width = self.resp2_graphicsView.width()
-        view_height = self.resp2_graphicsView.height()
-        
-        # 计算坐标参数
-        x_step = 3
-        max_points = view_width// x_step
-        start_idx = max(0, len(self.mRESPWaveList) - max_points)
-        y_scale = 6
-        y_offset = view_height / 50
-
-        # 绘制路径
-        x = 0
-        path.moveTo(x, y_offset - self.mRESPWaveList[start_idx] * y_scale)
-        for i in range(start_idx + 1, len(self.mRESPWaveList)):
-            x += x_step
-            y = y_offset - self.mRESPWaveList[i] * y_scale
-            path.lineTo(x, y)
-        
-        # 绘制到场景
-        self.RESP_waveform_scene.addPath(path, QPen(QColor("#ffc300"), 2))
-        # 自动滚动视图
-        if x > view_width * 0.8:
-            self.resp2_graphicsView.centerOn(x, y_offset)
-
-    def update_spo2_waveform(self):
-        if not self.mSPO2WaveList:
-            return
-        
-        # 清空旧波形
-        self.SPO2_waveform_scene.clear()
-
-        # 创建新路径
-        path = QPainterPath()
-        view_width = self.spo2_graphicsView.width()
-        view_height = self.spo2_graphicsView.height()
-        
-        # 计算坐标参数
-        x_step = 3
-        max_points = view_width // x_step
-        start_idx = max(0, len(self.mSPO2WaveList) - max_points)
-        y_scale = 6
-        y_offset = view_height / 50
-
-        # 绘制路径
-        x = 0
-        path.moveTo(x, y_offset - self.mSPO2WaveList[start_idx] * y_scale)
-        for i in range(start_idx + 1, len(self.mSPO2WaveList)):
-            x += x_step
-            y = y_offset - self.mSPO2WaveList[i] * y_scale
-            path.lineTo(x, y)
-        
-        # 绘制到场景
-        self.SPO2_waveform_scene.addPath(path, QPen(QColor("#33e8dc"), 2))
-
-        # 自动滚动视图
-        if x > view_width * 0.8:
-            self.spo2_graphicsView.centerOn(x, y_offset)
 
 
     def JC_slot(self):
