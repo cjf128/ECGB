@@ -5,7 +5,7 @@ import random
 import sys
 from PyQt5.QtWidgets import QMainWindow, QFrame, QGraphicsScene, QMessageBox, QApplication, QGraphicsPathItem
 from PyQt5.QtCore import QTimer, Qt, QDateTime, pyqtSignal, QUrl
-from PyQt5.QtGui import QIcon, QPainterPath, QPen, QGuiApplication, QFont
+from PyQt5.QtGui import QIcon, QPainterPath, QPen, QGuiApplication, QFont, QColor
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 
 import serial
@@ -45,7 +45,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.SJ_Dialog = SJ_Dialog()
         self.SJ_Dialog.setWindowTitle('数据保存')
         self.SJ_Dialog.setWindowModality(Qt.ApplicationModal)
-        self.SJ_Dialog.setSignal.connect(self.SJ_slot)
+        # self.SJ_Dialog.setSignal.connect(self.SJ_slot)
         self.config()
 
     def config(self):
@@ -53,7 +53,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.XX_btn.clicked.connect(self.Info_Dialog.show)
         self.JC_btn.clicked.connect(self.JC_slot)
         self.BJ_btn.clicked.connect(self.BJ_Dialog.show)
-        self.SJ_btn.clicked.connect(self.SJ_slot)
+        # self.SJ_btn.clicked.connect(self.SJ_slot)
 
         self.THRESHOLD_SIGNAL.connect(self.BJ_Dialog.threshold_slot)
 
@@ -246,13 +246,10 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         if data[1] == 0x02:
             spo2Data = data[2] << 8 | data[3]
             self.mSPO2WaveList.append(spo2Data)
-        # elif data[1] == 0x03:
-        #     if data[2] == 0:
-        #         self.connectStateLabel.setText("连接正常")
-        #         self.connectStateLabel.setStyleSheet("color:green")
-        #     elif data[2] == 1:
-        #         self.connectStateLabel.setText("导联脱落")
-        #         self.connectStateLabel.setStyleSheet("color:red")
+        elif data[1] == 0x03:
+            if data[2] == 1:
+                self.DL3_label.setText("导联脱落")
+                self.DL3_label.setStyleSheet("color:red")
         elif data[1] == 0x04:
             self.current_spo2 = (data[2] << 8) | data[3]
             self.SpO2_label.setText(self.current_spo2)
@@ -279,13 +276,16 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             path.lineTo(x, y)
 
         path_item = QGraphicsPathItem(path)
-        path_item.setPen(QPen("#33e8dc", 1))
+        path_item.setPen(QPen(QColor("#33e8dc"), 2))
         self.SPO2_waveform_scene.addItem(path_item)
 
         # 保留最近 maxPoints 个点
         if len(self.mSPO2WaveList) > self.maxPoints:
             self.mSPO2WaveList = self.mSPO2WaveList[-self.maxPoints:]
 
+        if not self.mSPO2WaveList:
+            return
+        
     def generate_simulated_data(self):
         """生成符合协议规范的心电模拟数据"""
         # 生成心电数值
@@ -583,8 +583,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
         self.BJ_Dialog.close()
     
-    def SJ_slot(self, hr, resp, spo2, bpm):
-        pass
+    # def SJ_slot(self, hr, resp, spo2, bpm):
+    #     pass
 
 
 if __name__ == '__main__':

@@ -1449,7 +1449,7 @@ background-color: rgb(51, 232, 220);</string>
               <item>
                <widget class="QLabel" name="BPM_label">
                 <property name="sizePolicy">
-                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                 <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
                   <horstretch>0</horstretch>
                   <verstretch>0</verstretch>
                  </sizepolicy>

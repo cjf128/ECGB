@@ -21,6 +21,7 @@ class CK_Dialog(QDialog, Ui_CK_Dialog):
     def config(self):
         self.Open_btn.clicked.connect(self.open_slot)
         self.Cancel_btn.clicked.connect(self.cancel_slot)
+        self.btnUpdate.clicked.connect(self.serial_search)
 
     def serial_search(self):
         port_lsit = QSerialPortInfo.availablePorts()

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+
+# Form implementation generated from reading ui file 'd:\PythonCode\ECGB\CK_Dialog.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.9
 #
@@ -137,6 +139,13 @@ class Ui_CK_Dialog(object):
         self.Open_btn.setFont(font)
         self.Open_btn.setObjectName("Open_btn")
         self.horizontalLayout_6.addWidget(self.Open_btn)
+        self.btnUpdate = QtWidgets.QPushButton(CK_Dialog)
+        font = QtGui.QFont()
+        font.setFamily("Arial")
+        font.setPointSize(12)
+        self.btnUpdate.setFont(font)
+        self.btnUpdate.setObjectName("btnUpdate")
+        self.horizontalLayout_6.addWidget(self.btnUpdate)
         self.Cancel_btn = QtWidgets.QPushButton(CK_Dialog)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -180,4 +189,5 @@ class Ui_CK_Dialog(object):
         self.JYW_box.setItemText(1, _translate("CK_Dialog", "O"))
         self.JYW_box.setItemText(2, _translate("CK_Dialog", "E"))
         self.Open_btn.setText(_translate("CK_Dialog", "打开串口"))
+        self.btnUpdate.setText(_translate("CK_Dialog", "刷新"))
         self.Cancel_btn.setText(_translate("CK_Dialog", "取消"))
