@@ -106,7 +106,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
         # 信号模拟
         self.simulated_timer = QTimer(self)
-        self.simulated_timer.timeout.connect(self.generate_simulated_data)
+        # self.simulated_timer.timeout.connect()
 
         self.serialPortTimer = QTimer(self)
         self.serialPortTimer.timeout.connect(self.data_receive)
@@ -125,7 +125,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.SPO2_threshold_low = 94
         self.maxPoints = 50
 
-        self.simulated_time = 1
         self.simulated_state = False
 
         self.current_hr = 0
@@ -179,34 +178,24 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             self.CK_Dialog.hide()
             return
         
+        self.ser.port = portNum
+        self.ser.baudrate = int(baudRate)
+        self.ser.bytesize = int(dataBits)
+        self.ser.stopbits = int(stopBits)
+        self.ser.parity = parity
+        try:
+            self.ser.open()
+        except:
+            QMessageBox.critical(self, "Error", "串口打开失败")
+            return
 
-        if portNum == "COM1":
-            self.simulated_state = True
-            self.status_label.setText("模拟数据已启动")
-            self.status_label.setStyleSheet("color: #ffffff")
+        self.serialPortTimer.start(2)
+        self.procDataTimer.start(2)
 
-            self.simulated_timer.start(20)
-            self.CK_Dialog.Open_btn.setText("关闭串口")
-            self.CK_Dialog.hide() # 串口对话框
-        else:
-            self.ser.port = portNum
-            self.ser.baudrate = int(baudRate)
-            self.ser.bytesize = int(dataBits)
-            self.ser.stopbits = int(stopBits)
-            self.ser.parity = parity
-            try:
-                self.ser.open()
-            except:
-                QMessageBox.critical(self, "Error", "串口打开失败")
-                return
-
-            self.serialPortTimer.start(2)
-            self.procDataTimer.start(2)
-
-            self.status_label.setText("串口已打开")
-            self.status_label.setStyleSheet("color: #ffffff")
-            self.CK_Dialog.Open_btn.setText("关闭串口")
-            self.CK_Dialog.hide()
+        self.status_label.setText("串口已打开")
+        self.status_label.setStyleSheet("color: #ffffff")
+        self.CK_Dialog.Open_btn.setText("关闭串口")
+        self.CK_Dialog.hide()
     
     # 处理串口接收的数据
     def data_receive(self):
@@ -408,87 +397,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
         if not self.mSPO2WaveList:
             return
-        
-    def generate_simulated_data(self):
-        """生成符合协议规范的心电模拟数据"""
-        # 生成心电数值
-        ecg_value = int(0.1 * math.sin(2 * math.pi * self.simulated_time) + 72 + random.uniform(-6, 6))
-        resp_value = int(0.1 * math.sin(2 * math.pi * self.simulated_time) + 18 + random.uniform(-6, 6))
-        spo2_value = int(0.1 * math.sin(2 * math.pi * self.simulated_time) + 97 + random.uniform(-3, 3))
-
-        # 创建原始数据包（模块ID + 数据头 + 二级ID + 6数据 + 校验和）
-        module_id = 0x01        # 假设心电模块ID为0x01
-        if self.simulated_time % 3 == 0:
-            sub_id = 0xA1           # 二级ID（假设为心电波形）
-            value = ecg_value
-        elif self.simulated_time % 3 == 1:
-            sub_id = 0xB1
-            value = resp_value
-        elif self.simulated_time % 3 == 2:
-            sub_id = 0xC1
-            value = spo2_value
-
-        self.simulated_time += 1
-        
-        # 构造原始数据包（注意长度必须为10）
-        raw_packet = [
-            module_id,   # 位置0: 模块ID
-            0x00,        # 位置1: 数据头（将由packData填充）
-            sub_id,      # 位置2: 二级ID
-            (value >> 8) & 0xFF,  # 高位字节（位置3）
-            value & 0xFF,         # 低位字节（位置4）
-            0x00,        # 位置5: 保留字节
-            0x00,        # 位置6: 保留字节
-            0x00,        # 位置7: 保留字节
-            0x00,        # 位置8: 保留字节
-            0x00         # 位置9: 校验和（将由packData填充）
-        ]
-
-        # 使用协议类打包数据
-        if self.mPackUnpck.packData(raw_packet):
-            # 获取打包后的字节流
-            packed_data = bytes(raw_packet)
-            # 模拟接收数据处理
-            self.process_simulated_data(packed_data)
-    
-    def process_simulated_data(self, data):
-        """处理接收到的二进制数据"""
-        # 协议解析（逐个字节处理）
-        for byte in data:
-            if self.mPackUnpck.unpackData(byte):
-                # 成功解析到完整包时获取数据
-                unpacked = self.mPackUnpck.getUnpackRslt()
-
-                if unpacked[0] == 0x01:  # 确认模块ID
-                    if unpacked[2] == 0xA1:  # 确认二级ID为心率
-                        # 解析16位心率值（大端序）
-                        self.current_hr = (unpacked[3] << 8) | unpacked[4]
-                        self.mECG1WaveList.append(self.current_hr)
-                        self.mBPMWaveList.append(self.current_hr)
-
-                        # 保持数据队列长度
-                        max_points = 10 * 50
-                        self.mECG1WaveList = self.mECG1WaveList[-max_points:]
-                        self.mBPMWaveList = self.mBPMWaveList[-max_points:]
-                        
-
-                    if unpacked[2] == 0xB1:
-                        # 解析16位心率值（大端序）
-                        self.current_resp = (unpacked[3] << 8) | unpacked[4]
-                        self.mRESPWaveList.append(self.current_resp)
-
-                        # 保持数据队列长度
-                        max_points = 10 * 50
-                        self.mRESPWaveList = self.mRESPWaveList[-max_points:]
-
-                    if unpacked[2] == 0xC1:  # 确认二级ID为心率
-                        # 解析16位心率值（大端序）
-                        self.current_spo2 = (unpacked[3] << 8) | unpacked[4]
-                        self.mSPO2WaveList.append(self.current_spo2)
-
-                        # 保持数据队列长度
-                        max_points = 10 * 50
-                        self.mSPO2WaveList = self.mSPO2WaveList[-max_points:]
 
     def update_hr_display(self):
         """更新心率显示标签"""
@@ -614,17 +522,38 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
     def JC_slot(self):
         QMessageBox.warning(self, "警告", "确定解除患者？", QMessageBox.Yes | QMessageBox.No)
-        if QMessageBox.Yes and self.simulated_state:
+        if QMessageBox.Yes:
             self.name_label.setText("None")
             self.sex_label.setText("None")
             self.mode_label.setText("None")
 
-            self.current_hr = 0
+            self.clear_all()
 
             self.CK_Dialog.open_slot()
         elif QMessageBox.No:
             return
     
+    def clear_all(self):
+        self.current_hr = 0
+        self.current_resp = 0
+        self.current_spo2 = 0
+
+        self.hr_update_timer.stop()
+        self.resp_update_timer.stop()
+        self.spo2_update_timer.stop()
+
+        self.HR_waveform_scene.clear()
+        self.RESP_waveform_scene.clear()
+        self.SpO2_waveform_scene.clear()
+
+        self.mECG1WaveList = []
+        self.mBPMWaveList = []
+        self.mSPO2WaveList = []
+
+        self.HR_label.setText("0")
+        self.RESP_label.setText("0")
+        self.SpO2_label.setText("0")
+        self.BPM_label.setText("0")
     def update_time(self):
         """更新时间显示"""
         current_time = QDateTime.currentDateTime()
