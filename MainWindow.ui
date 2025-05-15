@@ -1694,6 +1694,29 @@ border-radius: 8px;
         </widget>
        </item>
        <item>
+        <widget class="QPushButton" name="SJ_btn_2">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="font">
+          <font>
+           <family>Agency FB</family>
+           <pointsize>20</pointsize>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background-color: rgb(204, 204, 204);
+border-radius: 8px;</string>
+         </property>
+         <property name="text">
+          <string>信号导入</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QPushButton" name="SJ_btn">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Minimum" vsizetype="Expanding">

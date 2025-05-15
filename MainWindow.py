@@ -1,5 +1,6 @@
 
 import copy
+import datetime
 import math
 import random
 import sys
@@ -45,7 +46,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.SJ_Dialog = SJ_Dialog()
         self.SJ_Dialog.setWindowTitle('数据保存')
         self.SJ_Dialog.setWindowModality(Qt.ApplicationModal)
-        # self.SJ_Dialog.setSignal.connect(self.SJ_slot)
+        self.SJ_Dialog.setSignal.connect(self.SJ_slot)
         self.config()
 
     def config(self):
@@ -53,7 +54,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.XX_btn.clicked.connect(self.Info_Dialog.show)
         self.JC_btn.clicked.connect(self.JC_slot)
         self.BJ_btn.clicked.connect(self.BJ_Dialog.show)
-        # self.SJ_btn.clicked.connect(self.SJ_slot)
+        self.SJ_btn.clicked.connect(self.SJ_Dialog.show)
 
         self.THRESHOLD_SIGNAL.connect(self.BJ_Dialog.threshold_slot)
 
@@ -137,6 +138,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.BPM_blink_state = False
 
         self.mPackAfterUnpackArr = []
+        self.saveDataPath = ""
+        self.limit = 0
 
 
     def CK_slot(self):
@@ -198,7 +201,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 return
 
             self.serialPortTimer.start(2)
-            self.procDataTimer.start(20)
+            self.procDataTimer.start(2)
 
             self.status_label.setText("串口已打开")
             self.status_label.setStyleSheet("color: #ffffff")
@@ -234,26 +237,146 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         num = len(self.mPackAfterUnpackArr)
         if num > 0:
             for i in range(num):
+                if self.mPackAfterUnpackArr[i][0] == 0x10:
+                    self.analyzeECGData(self.mPackAfterUnpackArr[i])
+                if self.mPackAfterUnpackArr[i][0] == 0x11:
+                    self.analyzeRESPData(self.mPackAfterUnpackArr[i])
                 if self.mPackAfterUnpackArr[i][0] == 0x13:
                     self.analyzeSPO2Data(self.mPackAfterUnpackArr[i])
+                # 保存数据
+                if self.saveDataPath:
+                    if self.limit < 446:
+                        with open(self.saveDataPath, 'a') as file:
+                            data = []
+                            for j in range(0, 8):
+                                data.append(self.mPackAfterUnpackArr[i][j])
+                            file.write(str(data) + '\n')
+                            self.limit += 1
+                    else:
+                        self.saveDataPath = ''
+                        self.limit = 0
             del self.mPackAfterUnpackArr[0:num]
+
+        if len(self.mECG1WaveList) > 10:
+            self.drawECGWave()
+        if len(self.mRESPWaveList) > 10:
+            self.drawRESPWave()
         if len(self.mSPO2WaveList) > 10:
-            print("SPO2WaveList:", self.mSPO2WaveList)
             self.drawSPO2Wave()
 
-    # 处理心电数据
+    def analyzeECGData(self, data):
+        if data[1] == 0x02:
+            ecgData1 = data[2] << 8 | data[3]
+            ecgData2 = data[4] << 8 | data[5]
+            if ecgData1 != 0:
+                self.mECG1WaveList.append(ecgData1)
+            if ecgData2 != 0:
+                self.mECG1WaveList.append(ecgData2)
+        elif data[1] == 0x03:
+            if data[2] == 1:
+                self.DL1_label.setStyleSheet("color:red")
+            else:
+                self.DL1_label.setStyleSheet("color:green")
+        elif data[1] == 0x04:
+            self.current_hr = data[2] << 8 | data[3]
+            if self.current_hr != 0:
+                self.HR_label.setText(str(self.current_hr))
+
+    def analyzeRESPData(self, data):
+        if data[1] == 0x02:
+            resp = data[2] << 8 | data[3]
+            self.mRESPWaveList.append(resp)
+        elif data[1] == 0x03:
+            self.current_resp = data[2] << 8 | data[3]
+            self.RESP_label.setText(str(self.current_resp))
+        elif data[1] == 0x06:
+            if data[2] == 1:
+                self.DL2_label.setStyleSheet("color:green")
+            else:
+                self.DL2_label.setStyleSheet("color:red")
+
+    # 处理血氧数据
     def analyzeSPO2Data(self, data):
         if data[1] == 0x02:
             spo2Data = data[2] << 8 | data[3]
-            self.mSPO2WaveList.append(spo2Data)
-        elif data[1] == 0x03:
-            if data[2] == 1:
-                self.DL3_label.setText("导联脱落")
-                self.DL3_label.setStyleSheet("color:red")
+            if spo2Data != 0:
+                self.mSPO2WaveList.append(spo2Data)
         elif data[1] == 0x04:
-            self.current_spo2 = (data[2] << 8) | data[3]
-            self.SpO2_label.setText(self.current_spo2)
+            if data[2] == 0x01:
+                self.DL3_label.setText("手指脱落")
+                self.DL3_label.setStyleSheet("color:red")
+        elif data[1] == 0x05:
+            if data[2] == 0x01:
+                self.DL4_label.setText("探头脱落")
+                self.DL4_label.setStyleSheet("color:red")
+        elif data[1] == 0x03:
+            self.current_spo2 = data[3]
+            self.SpO2_label.setText(str(self.current_spo2))
 
+    def drawECGWave(self):
+        if not self.mECG1WaveList:
+            return
+
+        # 清除旧内容（可选）
+        self.HR_waveform_scene.clear()
+
+        view_width = self.ecg1_graphicsView.width()
+        view_height = self.ecg1_graphicsView.height()
+
+        scale_x = view_width / self.maxPoints
+        scale_y = view_height / 2 / 4096
+
+        path = QPainterPath()
+        path.moveTo(0, (self.mECG1WaveList[0] - 2048) * scale_y + view_height / 2)
+
+        for i in range(1, len(self.mECG1WaveList)):
+            x = i * scale_x
+            y = (self.mECG1WaveList[i] - 2048) * scale_y + view_height / 2
+            path.lineTo(x, y)
+
+        path_item = QGraphicsPathItem(path)
+        path_item.setPen(QPen(QColor("#25e81e"), 2))
+        self.HR_waveform_scene.addItem(path_item)
+
+        # 保留最近 maxPoints 个点
+        if len(self.mECG1WaveList) > self.maxPoints:
+            self.mECG1WaveList = self.mECG1WaveList[-self.maxPoints:]
+
+        if not self.mECG1WaveList:
+            return
+    
+    def drawRESPWave(self):
+        if not self.mRESPWaveList:
+            return
+
+        # 清除旧内容（可选）
+        self.RESP_waveform_scene.clear()
+
+        view_width = self.resp2_graphicsView.width()
+        view_height = self.resp2_graphicsView.height()
+
+        scale_x = view_width / self.maxPoints
+        scale_y = view_height / 2 / 4096
+
+        path = QPainterPath()
+        path.moveTo(0, (self.mRESPWaveList[0] - 2048) * scale_y + view_height / 2)
+
+        for i in range(1, len(self.mRESPWaveList)):
+            x = i * scale_x
+            y = (self.mRESPWaveList[i] - 2048) * scale_y + view_height / 2
+            path.lineTo(x, y)
+
+        path_item = QGraphicsPathItem(path)
+        path_item.setPen(QPen(QColor("#ffc300"), 2))
+        self.RESP_waveform_scene.addItem(path_item)
+
+        # 保留最近 maxPoints 个点
+        if len(self.mRESPWaveList) > self.maxPoints:
+            self.mRESPWaveList = self.mRESPWaveList[-self.maxPoints:]
+
+        if not self.mRESPWaveList:
+            return
+    
     def drawSPO2Wave(self):
         if not self.mSPO2WaveList:
             return
@@ -484,6 +607,10 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             self.SPO2_blink_state = False
             self.BPM_blink_state = False
 
+    def SJ_slot(self, path):
+        self.saveDataPath = path
+        
+
 
     def JC_slot(self):
         QMessageBox.warning(self, "警告", "确定解除患者？", QMessageBox.Yes | QMessageBox.No)
@@ -583,8 +710,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
         self.BJ_Dialog.close()
     
-    # def SJ_slot(self, hr, resp, spo2, bpm):
-    #     pass
 
 
 if __name__ == '__main__':

@@ -1,7 +1,6 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QDialog
+from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtSerialPort import QSerialPortInfo
 from PyQt5.QtGui import QIcon
 
 from ui_SJ_Dialog import Ui_SJ_Dialog
@@ -9,29 +8,32 @@ from ui_SJ_Dialog import Ui_SJ_Dialog
 
 
 class SJ_Dialog(QDialog, Ui_SJ_Dialog):
-    setSignal = pyqtSignal(bool, bool, bool, bool)
+    setSignal = pyqtSignal(str)
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
         self.setWindowIcon(QIcon('./icons/ECGB.png'))
-        self.setFixedSize(self.sizeHint())
         self.config()
     
     def config(self):
-        self.pushButton.clicked.connect(self.set_slot)
-        self.pushButton_2.clicked.connect(self.cancel_slot)
+        self.btnSave.clicked.connect(self.save_slot)
+        self.btnCancel.clicked.connect(self.cancel_slot)
+        self.btnSearch.clicked.connect(self.search_slot)
  
-    def set_slot(self):
-        hr = self.checkBox.isChecked()
-        resp = self.checkBox_2.isChecked()
-        spo2 = self.checkBox_3.isChecked()
-        bpm = self.checkBox_4.isChecked()
-        self.setSignal.emit(hr, resp, spo2, bpm)
+    def save_slot(self):
+        path = self.ledtPath.text()
+        self.setSignal.emit(path)
 
         self.close()
     
     def cancel_slot(self):
         self.close()
+
+    def search_slot(self):
+        save_path = QFileDialog.getExistingDirectory(self, "选择保存路径", "./")
+        if save_path:
+            self.ledtPath.setText(save_path)
+
 
 
 if __name__ == "__main__":
