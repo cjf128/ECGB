@@ -13,7 +13,7 @@ class BJ_Dialog(QDialog, Ui_BJ_Dialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
-        self.setWindowIcon(QIcon('./icons/ECGB.png'))
+        self.setWindowIcon(QIcon('./ECGB.ico'))
         self.setFixedSize(self.sizeHint())
         self.config()
     

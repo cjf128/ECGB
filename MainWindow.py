@@ -24,7 +24,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setupUi(self)
-        self.setWindowIcon(QIcon('./icons/ECGB.png'))
+        self.setWindowIcon(QIcon('./ECGB.ico'))
         self.setWindowTitle('ECGB')
 
         self.CK_Dialog = CK_Dialog()

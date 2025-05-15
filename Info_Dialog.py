@@ -11,7 +11,7 @@ class Info_Dialog(QDialog, Ui_Info_Dialog):
     def __init__(self, parent=None):
         super(Info_Dialog, self).__init__()
         self.setupUi(self)
-        self.setWindowIcon(QIcon('./icons/ECGB.png'))
+        self.setWindowIcon(QIcon('./ECGB.ico'))
         self.setFixedSize(250, 250)
         self.config()
 

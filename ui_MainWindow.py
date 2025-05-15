@@ -803,4 +803,3 @@ class Ui_ECGB_Window(object):
         self.SJ_btn.setText(_translate("ECGB_Window", "数据存储"))
         self.BJ_btn.setText(_translate("ECGB_Window", "报警设置"))
         self.JC_btn.setText(_translate("ECGB_Window", "解除患者"))
-import icons_rc

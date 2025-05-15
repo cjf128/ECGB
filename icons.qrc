@@ -1,8 +1,0 @@
-<RCC>
-  <qresource prefix="icons">
-    <file>icons/men-line.png</file>
-    <file>icons/成人男性.png</file>
-    <file>icons/返回.png</file>
-    <file>icons/女.png</file>
-  </qresource>
-</RCC>

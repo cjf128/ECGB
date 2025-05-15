@@ -1791,8 +1791,6 @@ border-radius: 8px;</string>
    </layout>
   </widget>
  </widget>
- <resources>
-  <include location="icons.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>

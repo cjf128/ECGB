@@ -12,7 +12,7 @@ class SJ_Dialog(QDialog, Ui_SJ_Dialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
-        self.setWindowIcon(QIcon('./icons/ECGB.png'))
+        self.setWindowIcon(QIcon('./ECGB.ico'))
         self.config()
     
     def config(self):

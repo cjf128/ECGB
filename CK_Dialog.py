@@ -12,7 +12,7 @@ class CK_Dialog(QDialog, Ui_CK_Dialog):
     def __init__(self, parent=None):
         super(CK_Dialog, self).__init__(parent)
         self.setupUi(self)
-        self.setWindowIcon(QIcon('./icons/ECGB.png'))
+        self.setWindowIcon(QIcon('./ECGB.ico'))
         self.setFixedSize(300, 300)
         
         self.config()
