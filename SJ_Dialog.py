@@ -1,3 +1,4 @@
+import os
 import sys
 from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog
 from PyQt5.QtCore import pyqtSignal
@@ -9,9 +10,10 @@ from ui_SJ_Dialog import Ui_SJ_Dialog
 
 class SJ_Dialog(QDialog, Ui_SJ_Dialog):
     setSignal = pyqtSignal(str)
-    def __init__(self, parent=None):
+    def __init__(self, filepath, parent=None):
         super().__init__(parent)
         self.setupUi(self)
+        self.ledtPath.setText(filepath)
         self.setWindowIcon(QIcon('./ECGB.ico'))
         self.config()
     
@@ -30,10 +32,9 @@ class SJ_Dialog(QDialog, Ui_SJ_Dialog):
         self.close()
 
     def search_slot(self):
-        save_path = QFileDialog.getExistingDirectory(self, "选择保存路径", "./")
+        save_path, _ = QFileDialog.getSaveFileName(self, '保存文件', os.getcwd(), "All File(*);;Text Files(*.txt)")
         if save_path:
             self.ledtPath.setText(save_path)
-
 
 
 if __name__ == "__main__":

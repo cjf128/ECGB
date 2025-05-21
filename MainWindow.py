@@ -2,6 +2,7 @@
 import copy
 import datetime
 import math
+import os
 import random
 import sys
 from PyQt5.QtWidgets import QMainWindow, QFrame, QGraphicsScene, QMessageBox, QApplication, QGraphicsPathItem
@@ -20,7 +21,7 @@ from ui_MainWindow import Ui_ECGB_Window
 
 
 class MainWindow(QMainWindow, Ui_ECGB_Window):
-    THRESHOLD_SIGNAL = pyqtSignal(int, int, int, int, int)
+    THRESHOLD_SIGNAL = pyqtSignal(int, int, int, int, int, int, int)
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setupUi(self)
@@ -43,7 +44,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.BJ_Dialog.setWindowModality(Qt.ApplicationModal)
         self.BJ_Dialog.thresholdSignal.connect(self.threshold_slot)
 
-        self.SJ_Dialog = SJ_Dialog()
+        self.filepath = os.getcwd() + r"\savedata.txt"
+        self.SJ_Dialog = SJ_Dialog(self.filepath)
         self.SJ_Dialog.setWindowTitle('数据保存')
         self.SJ_Dialog.setWindowModality(Qt.ApplicationModal)
         self.SJ_Dialog.setSignal.connect(self.SJ_slot)
@@ -63,7 +65,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.mECG1WaveList = []
         self.mRESPWaveList = []
         self.mSPO2WaveList = []
-        self.mBPMWaveList = []
         self.time_list = []
 
         self.HR_waveform_scene = QGraphicsScene()
@@ -123,6 +124,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.RESP_threshold_low = 12
         self.RESP_threshold_high = 24
         self.SPO2_threshold_low = 94
+        self.PR_threshold_low = 60
+        self.PR_threshold_high = 100
         self.maxPoints = 50
 
         self.simulated_state = False
@@ -130,11 +133,12 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.current_hr = 0
         self.current_resp = 0
         self.current_spo2 = 0
+        self.current_pr = 0
 
         self.HR_blink_state = False
         self.RESP_blink_state = False
         self.SPO2_blink_state = False
-        self.BPM_blink_state = False
+        self.PR_blink_state = False
 
         self.mPackAfterUnpackArr = []
         self.saveDataPath = ""
@@ -268,8 +272,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.DL1_label.setStyleSheet("color:green")
         elif data[1] == 0x04:
             self.current_hr = data[2] << 8 | data[3]
-            if self.current_hr != 0:
-                self.HR_label.setText(str(self.current_hr))
 
     def analyzeRESPData(self, data):
         if data[1] == 0x02:
@@ -277,7 +279,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             self.mRESPWaveList.append(resp)
         elif data[1] == 0x03:
             self.current_resp = data[2] << 8 | data[3]
-            self.RESP_label.setText(str(self.current_resp))
         elif data[1] == 0x06:
             if data[2] == 1:
                 self.DL2_label.setStyleSheet("color:green")
@@ -286,6 +287,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
     # 处理血氧数据
     def analyzeSPO2Data(self, data):
+        print(data[1])
         if data[1] == 0x02:
             spo2Data = data[2] << 8 | data[3]
             if spo2Data != 0:
@@ -300,7 +302,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.DL4_label.setStyleSheet("color:red")
         elif data[1] == 0x03:
             self.current_spo2 = data[3]
-            self.SpO2_label.setText(str(self.current_spo2))
+        elif data[1] == 0x06:
+            self.curren_pr = data[2]
 
     def drawECGWave(self):
         if not self.mECG1WaveList:
@@ -470,7 +473,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
     def update_spo2_display(self):
         """更新脉率显示标签"""
         self.SpO2_label.setText(f"{self.current_spo2}")
-        self.BPM_label.setText(f"{self.current_hr}")
+        self.PR_label.setText(f"{self.current_pr}")
         if self.current_spo2 > 0 and self.current_spo2 <= self.SPO2_threshold_low:
             if not self.is_alarming:
                 self.alarm_player.play()
@@ -491,13 +494,13 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
             self.SPO2_blink_state = not self.SPO2_blink_state
 
-            if self.BPM_blink_state:
-                self.BPM_label.setFont(QFont("Agency FB", 80))
-                self.BPM_label.setStyleSheet("color: #ff0000")
+            if self.PR_blink_state:
+                self.PR_label.setFont(QFont("Agency FB", 80))
+                self.PR_label.setStyleSheet("color: #ff0000")
             else:
-                self.BPM_label.setFont(QFont("Agency FB", 90))
+                self.PR_label.setFont(QFont("Agency FB", 90))
 
-            self.BPM_blink_state = not self.BPM_blink_state
+            self.PR_blink_state = not self.PR_blink_state
 
         else:
             if self.is_alarming:
@@ -510,14 +513,14 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             self.SpO2_label.setFont(QFont("Agency FB", 80))
             self.SpO2_label.setStyleSheet("color: #33e8dc")
 
-            self.BPM_label.setFont(QFont("Agency FB", 80))
-            self.BPM_label.setStyleSheet("color: #33e8dc")
+            self.PR_label.setFont(QFont("Agency FB", 80))
+            self.PR_label.setStyleSheet("color: #33e8dc")
             self.SPO2_blink_state = False
-            self.BPM_blink_state = False
+            self.PR_blink_state = False
 
     def SJ_slot(self, path):
         self.saveDataPath = path
-        
+        self.filepath = path
 
 
     def JC_slot(self):
@@ -544,16 +547,16 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
         self.HR_waveform_scene.clear()
         self.RESP_waveform_scene.clear()
-        self.SpO2_waveform_scene.clear()
+        self.SPO2_waveform_scene.clear()
 
         self.mECG1WaveList = []
-        self.mBPMWaveList = []
+        self.mPRWaveList = []
         self.mSPO2WaveList = []
 
         self.HR_label.setText("0")
         self.RESP_label.setText("0")
         self.SpO2_label.setText("0")
-        self.BPM_label.setText("0")
+        self.PR_label.setText("0")
     def update_time(self):
         """更新时间显示"""
         current_time = QDateTime.currentDateTime()
@@ -577,6 +580,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.RESP_threshold_low = 12
                 self.RESP_threshold_high = 24
                 self.SPO2_threshold_low = 94
+                self.PR_threshold_low = 60
+                self.PR_threshold_high = 100
 
             elif "新生儿" in self.mode_label.text():
                 self.HR_threshold_low = 100
@@ -584,6 +589,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.RESP_threshold_low = 30
                 self.RESP_threshold_high = 60
                 self.SPO2_threshold_low = 92
+                self.PR_threshold_low = 120
+                self.PR_threshold_high = 160
 
             elif "婴儿" in self.mode_label.text():
                 self.HR_threshold_low = 90
@@ -591,6 +598,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.RESP_threshold_low = 30
                 self.RESP_threshold_high = 50
                 self.SPO2_threshold_low = 92
+                self.PR_threshold_low = 80
+                self.PR_threshold_high = 140
 
             elif "幼儿" in self.mode_label.text():
                 self.HR_threshold_low = 70
@@ -598,6 +607,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.RESP_threshold_low = 25
                 self.RESP_threshold_high = 40
                 self.SPO2_threshold_low = 94
+                self.PR_threshold_low = 80
+                self.PR_threshold_high = 130
 
             elif "学龄前" in self.mode_label.text():
                 self.HR_threshold_low = 65
@@ -605,6 +616,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.RESP_threshold_low = 20
                 self.RESP_threshold_high = 34
                 self.SPO2_threshold_low = 94
+                self.PR_threshold_low = 75
+                self.PR_threshold_high = 120
 
             elif "学龄" in self.mode_label.text():
                 self.HR_threshold_low = 60
@@ -612,6 +625,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.RESP_threshold_low = 18
                 self.RESP_threshold_high = 30
                 self.SPO2_threshold_low = 94
+                self.PR_threshold_low = 60
+                self.PR_threshold_high = 100
 
             elif "青少年" in self.mode_label.text():
                 self.HR_threshold_low = 60
@@ -619,8 +634,10 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.RESP_threshold_low = 12
                 self.RESP_threshold_high = 20
                 self.SPO2_threshold_low = 94
+                self.PR_threshold_low = 60
+                self.PR_threshold_high = 100            
 
-            self.THRESHOLD_SIGNAL.emit(self.HR_threshold_low, self.HR_threshold_high, self.RESP_threshold_low, self.RESP_threshold_high, self.SPO2_threshold_low)
+            self.THRESHOLD_SIGNAL.emit(self.HR_threshold_low, self.HR_threshold_high, self.RESP_threshold_low, self.RESP_threshold_high, self.SPO2_threshold_low, self.PR_threshold_high, self.PR_threshold_low)
 
             self.Info_Dialog.close()
         elif set_signal == 0:
@@ -635,7 +652,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.SPO2_threshold_low = spo2_low
         QMessageBox.information(self, "提示", "阈值设置成功！")
 
-        self.THRESHOLD_SIGNAL.emit(self.HR_threshold_low, self.HR_threshold_high, self.RESP_threshold_low, self.RESP_threshold_high, self.SPO2_threshold_low)
+        self.THRESHOLD_SIGNAL.emit(self.HR_threshold_low, self.HR_threshold_high, self.RESP_threshold_low, self.RESP_threshold_high, self.SPO2_threshold_low, self.PR_threshold_high, self.PR_threshold_low)
 
         self.BJ_Dialog.close()
     
