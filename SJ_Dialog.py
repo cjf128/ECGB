@@ -39,6 +39,7 @@ class SJ_Dialog(QDialog, Ui_SJ_Dialog):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = SJ_Dialog()
+    file_path = r"D:\PythonProjects\ECGB\savedata.txt"
+    window = SJ_Dialog(file_path)
     window.show()
     sys.exit(app.exec_())

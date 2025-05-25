@@ -105,10 +105,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.spo2_update_timer.timeout.connect(self.update_spo2_display)
         self.spo2_update_timer.start(1000)
 
-        # 信号模拟
-        self.simulated_timer = QTimer(self)
-        # self.simulated_timer.timeout.connect()
-
         self.serialPortTimer = QTimer(self)
         self.serialPortTimer.timeout.connect(self.data_receive)
 
@@ -126,9 +122,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.SPO2_threshold_low = 94
         self.PR_threshold_low = 60
         self.PR_threshold_high = 100
-        self.maxPoints = 50
-
-        self.simulated_state = False
+        self.maxPoints = 500
 
         self.current_hr = 0
         self.current_resp = 0
@@ -155,20 +149,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         #     return
     
     def serial_slot(self, portNum, baudRate, dataBits, stopBits, parity):
-        if self.simulated_state == True:
-            self.simulated_timer.stop()
-
-            self.HR_waveform_scene.clear()
-            self.RESP_waveform_scene.clear()
-            self.SPO2_waveform_scene.clear()
-
-            self.status_label.setText("串口已关闭")
-            self.status_label.setStyleSheet("color: #ff0000")
-            self.CK_Dialog.Open_btn.setText("打开串口")
-            self.CK_Dialog.hide()
-            self.simulated_state = False
-            return
-        
         if self.ser.isOpen():
             self.serialPortTimer.stop()
             self.procDataTimer.stop()
@@ -287,7 +267,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
     # 处理血氧数据
     def analyzeSPO2Data(self, data):
-        print(data[1])
         if data[1] == 0x02:
             spo2Data = data[2] << 8 | data[3]
             if spo2Data != 0:
@@ -309,7 +288,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         if not self.mECG1WaveList:
             return
 
-        # 清除旧内容（可选）
         self.HR_waveform_scene.clear()
 
         view_width = self.ecg1_graphicsView.width()
@@ -550,7 +528,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.SPO2_waveform_scene.clear()
 
         self.mECG1WaveList = []
-        self.mPRWaveList = []
+        self.mRESPWaveList = []
         self.mSPO2WaveList = []
 
         self.HR_label.setText("0")

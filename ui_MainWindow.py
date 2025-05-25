@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'd:\PythonCode\ECGB\MainWindow.ui'
+# Form implementation generated from reading ui file 'MainWindow.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.9
 #
@@ -706,20 +706,6 @@ class Ui_ECGB_Window(object):
 "")
         self.CK_btn.setObjectName("CK_btn")
         self.horizontalLayout_5.addWidget(self.CK_btn)
-        self.SJ_btn_2 = QtWidgets.QPushButton(self.widget_31)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.SJ_btn_2.sizePolicy().hasHeightForWidth())
-        self.SJ_btn_2.setSizePolicy(sizePolicy)
-        font = QtGui.QFont()
-        font.setFamily("Agency FB")
-        font.setPointSize(20)
-        self.SJ_btn_2.setFont(font)
-        self.SJ_btn_2.setStyleSheet("background-color: rgb(204, 204, 204);\n"
-"border-radius: 8px;")
-        self.SJ_btn_2.setObjectName("SJ_btn_2")
-        self.horizontalLayout_5.addWidget(self.SJ_btn_2)
         self.SJ_btn = QtWidgets.QPushButton(self.widget_31)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(0)
@@ -799,7 +785,6 @@ class Ui_ECGB_Window(object):
         self.DL4_label.setText(_translate("ECGB_Window", "手指脱落"))
         self.XX_btn.setText(_translate("ECGB_Window", "信息录入"))
         self.CK_btn.setText(_translate("ECGB_Window", "串口设置"))
-        self.SJ_btn_2.setText(_translate("ECGB_Window", "信号导入"))
         self.SJ_btn.setText(_translate("ECGB_Window", "数据存储"))
         self.BJ_btn.setText(_translate("ECGB_Window", "报警设置"))
         self.JC_btn.setText(_translate("ECGB_Window", "解除患者"))
