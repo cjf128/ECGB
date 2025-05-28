@@ -34,8 +34,8 @@ class BJ_Dialog(QDialog, Ui_BJ_Dialog):
         self.spinBox_3.setValue(resp_low)
         self.spinBox_4.setValue(resp_high)
         self.spinBox_5.setValue(spo2_low)
-        self.spinBox_6.setText(pr_high)
-        self.spinBox_7.setText(pr_low)
+        self.spinBox_6.setValue(pr_high)
+        self.spinBox_7.setValue(pr_low)
 
 
 

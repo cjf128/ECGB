@@ -4,6 +4,7 @@ import datetime
 import math
 import os
 import random
+import re
 import sys
 from PyQt5.QtWidgets import QMainWindow, QFrame, QGraphicsScene, QMessageBox, QApplication, QGraphicsPathItem
 from PyQt5.QtCore import QTimer, Qt, QDateTime, pyqtSignal, QUrl
@@ -16,7 +17,7 @@ from Info_Dialog import Info_Dialog
 from BJ_Dialog import BJ_Dialog
 from PackUnpack import PackUnpack
 
-from SJ_Dialog import SJ_Dialog
+from Load_Dialog import Load_Dialog
 from ui_MainWindow import Ui_ECGB_Window
 
 
@@ -44,11 +45,10 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.BJ_Dialog.setWindowModality(Qt.ApplicationModal)
         self.BJ_Dialog.thresholdSignal.connect(self.threshold_slot)
 
-        self.filepath = os.getcwd() + r"\savedata.txt"
-        self.SJ_Dialog = SJ_Dialog(self.filepath)
-        self.SJ_Dialog.setWindowTitle('数据保存')
-        self.SJ_Dialog.setWindowModality(Qt.ApplicationModal)
-        self.SJ_Dialog.setSignal.connect(self.SJ_slot)
+        self.Load_Dialog = Load_Dialog()
+        self.Load_Dialog.setWindowTitle('数据导入')
+        self.Load_Dialog.setWindowModality(Qt.ApplicationModal)
+        self.Load_Dialog.setSignal.connect(self.load_slot)
         self.config()
 
     def config(self):
@@ -56,7 +56,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.XX_btn.clicked.connect(self.Info_Dialog.show)
         self.JC_btn.clicked.connect(self.JC_slot)
         self.BJ_btn.clicked.connect(self.BJ_Dialog.show)
-        self.SJ_btn.clicked.connect(self.SJ_Dialog.show)
+        self.SJ_btn.clicked.connect(self.SJ_slot)
+        self.load_btn.clicked.connect(self.Load_Dialog.show)
 
         self.THRESHOLD_SIGNAL.connect(self.BJ_Dialog.threshold_slot)
 
@@ -111,6 +112,9 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.procDataTimer = QTimer(self)
         self.procDataTimer.timeout.connect(self.data_process)
 
+        self.simulateTimer = QTimer(self)
+        self.simulateTimer.timeout.connect(self.data_process)
+
         self.alarm_player = QMediaPlayer()
         self.alarm_player.setMedia(QMediaContent(QUrl.fromLocalFile('alarm.mp3')))
         self.is_alarming = False
@@ -122,7 +126,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.SPO2_threshold_low = 94
         self.PR_threshold_low = 60
         self.PR_threshold_high = 100
-        self.maxPoints = 500
+        self.maxPoints = 100
 
         self.current_hr = 0
         self.current_resp = 0
@@ -140,6 +144,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
 
     def CK_slot(self):
+        self.clear_all()
         self.CK_Dialog.show()
 
         # if self.name_label.text() != "None":
@@ -226,7 +231,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                             file.write(str(data) + '\n')
                             self.limit += 1
                     else:
-                        self.saveDataPath = ''
+                        self.saveDataPath = ""
                         self.limit = 0
             del self.mPackAfterUnpackArr[0:num]
 
@@ -293,27 +298,33 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         view_width = self.ecg1_graphicsView.width()
         view_height = self.ecg1_graphicsView.height()
 
+        # 计算每个点的缩放比例
         scale_x = view_width / self.maxPoints
         scale_y = view_height / 2 / 4096
 
-        path = QPainterPath()
-        path.moveTo(0, (self.mECG1WaveList[0] - 2048) * scale_y + view_height / 2)
+        # 仅保留最后maxPoints个数据点以实现滚动
+        if len(self.mECG1WaveList) > self.maxPoints:
+            self.mECG1WaveList = self.mECG1WaveList[-self.maxPoints:]
 
+        # 创建路径并移动到第一个点
+        path = QPainterPath()
+        start_x = 0
+        path.moveTo(start_x, (self.mECG1WaveList[0] - 2048) * scale_y + view_height / 2)
+
+        # 绘制所有线段
         for i in range(1, len(self.mECG1WaveList)):
             x = i * scale_x
             y = (self.mECG1WaveList[i] - 2048) * scale_y + view_height / 2
             path.lineTo(x, y)
 
+        # 添加路径到场景
         path_item = QGraphicsPathItem(path)
-        path_item.setPen(QPen(QColor("#25e81e"), 2))
+        path_item.setPen(QPen(QColor("#09ff00"), 2))
         self.HR_waveform_scene.addItem(path_item)
 
-        # 保留最近 maxPoints 个点
-        if len(self.mECG1WaveList) > self.maxPoints:
-            self.mECG1WaveList = self.mECG1WaveList[-self.maxPoints:]
-
-        if not self.mECG1WaveList:
-            return
+        # 自动滚动到最右侧以显示新波形
+        self.ecg1_graphicsView.setSceneRect(0, 0, len(self.mECG1WaveList)*scale_x, view_height)
+        self.ecg1_graphicsView.horizontalScrollBar().setValue(self.ecg1_graphicsView.horizontalScrollBar().maximum())
     
     def drawRESPWave(self):
         if not self.mRESPWaveList:
@@ -343,9 +354,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         # 保留最近 maxPoints 个点
         if len(self.mRESPWaveList) > self.maxPoints:
             self.mRESPWaveList = self.mRESPWaveList[-self.maxPoints:]
-
-        if not self.mRESPWaveList:
-            return
     
     def drawSPO2Wave(self):
         if not self.mSPO2WaveList:
@@ -369,15 +377,12 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             path.lineTo(x, y)
 
         path_item = QGraphicsPathItem(path)
-        path_item.setPen(QPen(QColor("#33e8dc"), 2))
+        path_item.setPen(QPen(QColor("#00ffee"), 2))
         self.SPO2_waveform_scene.addItem(path_item)
 
         # 保留最近 maxPoints 个点
         if len(self.mSPO2WaveList) > self.maxPoints:
             self.mSPO2WaveList = self.mSPO2WaveList[-self.maxPoints:]
-
-        if not self.mSPO2WaveList:
-            return
 
     def update_hr_display(self):
         """更新心率显示标签"""
@@ -489,17 +494,59 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.spo2_update_timer.setInterval(1000)
                 self.spo2_update_timer.start()
             self.SpO2_label.setFont(QFont("Agency FB", 80))
-            self.SpO2_label.setStyleSheet("color: #33e8dc")
+            self.SpO2_label.setStyleSheet("color: #00ffee")
 
             self.PR_label.setFont(QFont("Agency FB", 80))
-            self.PR_label.setStyleSheet("color: #33e8dc")
+            self.PR_label.setStyleSheet("color: #00ffee")
             self.SPO2_blink_state = False
             self.PR_blink_state = False
 
     def SJ_slot(self, path):
-        self.saveDataPath = path
-        self.filepath = path
+        if self.name_label.text() != "None":
+            name = self.name_label.text()
+            sex = "m" if self.sex_label.text() == "男" else "f"
+            mode = self.Info_Dialog.comboBox_2.currentIndex()
+            time = self.date_label + "_" + self.time_label
 
+            self.filepath = os.getcwd() + rf"\Data\{name}_{sex}_{mode}_{time}.txt"
+            self.saveDataPath = self.filepath
+            QMessageBox.information(self, "提示", f"数据保存至{self.filepath}", QMessageBox.Yes)
+        else:
+            QMessageBox.warning(self, "警告", "请先输入患者信息！", QMessageBox.Yes)
+            return
+
+
+    def load_slot(self, path):
+        self.loadDataPath = path
+        basename = os.path.basename(path)
+
+        # 检查文件名是否符合标准
+        if re.match(r"^[a-zA-Z0-9_]+_[mf]_[0-9]+_[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2}\.txt$", basename):
+            name = basename.split("_")[0]
+            sex = basename.split("_")[1]
+            mode = basename.split("_")[2]
+
+            self.name_label.setText(name)
+            self.sex_label.setText("男" if sex == "m" else "女")
+            self.mode_label.setText(mode)
+        
+        # 打开并读取文件，一次读取32个字节
+        with open(path, "rb") as file:
+            data = file.read(32)
+            while data:
+                self.mPackAfterUnpackArray.append(data)
+            else:
+                QMessageBox.information(self, "提示", "数据加载完毕，是否解除", QMessageBox.Yes, QMessageBox.No)
+                if QMessageBox.Yes:
+                    self.name_label.setText("None")
+                    self.sex_label.setText("None")
+                    self.mode_label.setText("None")
+
+                    self.clear_all()
+                else:
+                    return
+
+        self.simulateTimer.start(2)
 
     def JC_slot(self):
         QMessageBox.warning(self, "警告", "确定解除患者？", QMessageBox.Yes | QMessageBox.No)
@@ -530,6 +577,9 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.mECG1WaveList = []
         self.mRESPWaveList = []
         self.mSPO2WaveList = []
+
+        self.saveDataPath = ""
+        self.simulateTimer.stop()
 
         self.HR_label.setText("0")
         self.RESP_label.setText("0")

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'd:\PythonCode\ECGB\SJ_Dialog.ui'
+# Form implementation generated from reading ui file 'd:\PythonProjects\ECGB\Load_Dialog.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.9
 #
@@ -11,39 +11,43 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 
-class Ui_SJ_Dialog(object):
-    def setupUi(self, SJ_Dialog):
-        SJ_Dialog.setObjectName("SJ_Dialog")
-        SJ_Dialog.resize(410, 180)
-        self.verticalLayout = QtWidgets.QVBoxLayout(SJ_Dialog)
+class Ui_Load_Dialog(object):
+    def setupUi(self, Load_Dialog):
+        Load_Dialog.setObjectName("Load_Dialog")
+        Load_Dialog.resize(410, 180)
+        self.verticalLayout = QtWidgets.QVBoxLayout(Load_Dialog)
         self.verticalLayout.setObjectName("verticalLayout")
-        self.label = QtWidgets.QLabel(SJ_Dialog)
+        self.label = QtWidgets.QLabel(Load_Dialog)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.label.sizePolicy().hasHeightForWidth())
         self.label.setSizePolicy(sizePolicy)
+        font = QtGui.QFont()
+        font.setFamily("Agency FB")
+        font.setPointSize(12)
+        self.label.setFont(font)
         self.label.setObjectName("label")
         self.verticalLayout.addWidget(self.label)
         self.horizontalLayout_3 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_3.setObjectName("horizontalLayout_3")
-        self.ledtPath = QtWidgets.QLineEdit(SJ_Dialog)
+        self.ledtPath = QtWidgets.QLineEdit(Load_Dialog)
         self.ledtPath.setObjectName("ledtPath")
         self.horizontalLayout_3.addWidget(self.ledtPath)
-        self.btnSearch = QtWidgets.QPushButton(SJ_Dialog)
+        self.btnSearch = QtWidgets.QPushButton(Load_Dialog)
         self.btnSearch.setObjectName("btnSearch")
         self.horizontalLayout_3.addWidget(self.btnSearch)
         self.verticalLayout.addLayout(self.horizontalLayout_3)
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
-        self.btnSave = QtWidgets.QPushButton(SJ_Dialog)
+        self.btnLoad = QtWidgets.QPushButton(Load_Dialog)
         font = QtGui.QFont()
         font.setFamily("Agency FB")
         font.setPointSize(12)
-        self.btnSave.setFont(font)
-        self.btnSave.setObjectName("btnSave")
-        self.horizontalLayout_2.addWidget(self.btnSave)
-        self.btnCancel = QtWidgets.QPushButton(SJ_Dialog)
+        self.btnLoad.setFont(font)
+        self.btnLoad.setObjectName("btnLoad")
+        self.horizontalLayout_2.addWidget(self.btnLoad)
+        self.btnCancel = QtWidgets.QPushButton(Load_Dialog)
         font = QtGui.QFont()
         font.setFamily("Agency FB")
         font.setPointSize(12)
@@ -52,13 +56,13 @@ class Ui_SJ_Dialog(object):
         self.horizontalLayout_2.addWidget(self.btnCancel)
         self.verticalLayout.addLayout(self.horizontalLayout_2)
 
-        self.retranslateUi(SJ_Dialog)
-        QtCore.QMetaObject.connectSlotsByName(SJ_Dialog)
+        self.retranslateUi(Load_Dialog)
+        QtCore.QMetaObject.connectSlotsByName(Load_Dialog)
 
-    def retranslateUi(self, SJ_Dialog):
+    def retranslateUi(self, Load_Dialog):
         _translate = QtCore.QCoreApplication.translate
-        SJ_Dialog.setWindowTitle(_translate("SJ_Dialog", "Dialog"))
-        self.label.setText(_translate("SJ_Dialog", "保存路径"))
-        self.btnSearch.setText(_translate("SJ_Dialog", "浏览"))
-        self.btnSave.setText(_translate("SJ_Dialog", "保存"))
-        self.btnCancel.setText(_translate("SJ_Dialog", "取消"))
+        Load_Dialog.setWindowTitle(_translate("Load_Dialog", "Dialog"))
+        self.label.setText(_translate("Load_Dialog", "导入路径"))
+        self.btnSearch.setText(_translate("Load_Dialog", "浏览"))
+        self.btnLoad.setText(_translate("Load_Dialog", "导入"))
+        self.btnCancel.setText(_translate("Load_Dialog", "取消"))

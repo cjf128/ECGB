@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>SJ_Dialog</class>
- <widget class="QDialog" name="SJ_Dialog">
+ <class>Load_Dialog</class>
+ <widget class="QDialog" name="Load_Dialog">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -22,8 +22,14 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
+     <property name="font">
+      <font>
+       <family>Agency FB</family>
+       <pointsize>12</pointsize>
+      </font>
+     </property>
      <property name="text">
-      <string>保存路径</string>
+      <string>导入路径</string>
      </property>
     </widget>
    </item>
@@ -44,7 +50,7 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
-      <widget class="QPushButton" name="btnSave">
+      <widget class="QPushButton" name="btnLoad">
        <property name="font">
         <font>
          <family>Agency FB</family>
@@ -52,7 +58,7 @@
         </font>
        </property>
        <property name="text">
-        <string>保存</string>
+        <string>导入</string>
        </property>
       </widget>
      </item>

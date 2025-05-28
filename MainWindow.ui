@@ -611,7 +611,6 @@
                  </property>
                  <property name="styleSheet">
                   <string notr="true">color: rgb(255, 255, 255);
-transform: rotate(90deg);
 </string>
                  </property>
                  <property name="frameShape">
@@ -1897,6 +1896,36 @@ border-radius: 8px;
          </property>
          <property name="text">
           <string>串口设置</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="load_btn">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <family>Agency FB</family>
+           <pointsize>20</pointsize>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background-color: rgb(204, 204, 204);
+border-radius: 8px;
+</string>
+         </property>
+         <property name="text">
+          <string>数据导入</string>
          </property>
         </widget>
        </item>
