@@ -38,7 +38,6 @@ class Load_Dialog(QDialog, Ui_Load_Dialog):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    file_path = r"D:\PythonProjects\ECGB\savedata.txt"
     window = Load_Dialog()
     window.show()
     sys.exit(app.exec_())

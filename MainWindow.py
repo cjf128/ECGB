@@ -15,9 +15,10 @@ import serial
 from CK_Dialog import CK_Dialog
 from Info_Dialog import Info_Dialog
 from BJ_Dialog import BJ_Dialog
+from Load_Dialog import Load_Dialog
 from PackUnpack import PackUnpack
 
-from Load_Dialog import Load_Dialog
+# from Load_Dialog import Load_Dialog
 from ui_MainWindow import Ui_ECGB_Window
 
 
@@ -91,21 +92,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.clock_timer.timeout.connect(self.update_time)
         self.clock_timer.start(1000)
 
-        # 添加心率更新定时器（每秒更新一次）
-        self.hr_update_timer = QTimer(self)
-        self.hr_update_timer.timeout.connect(self.update_hr_display)
-        self.hr_update_timer.start(1000)
-
-        # 添加呼吸率更新定时器（每秒更新一次）
-        self.resp_update_timer = QTimer(self)
-        self.resp_update_timer.timeout.connect(self.update_resp_display)
-        self.resp_update_timer.start(1000)
-
-        # 添加脉率更新定时器（每秒更新一次）
-        self.spo2_update_timer = QTimer(self)
-        self.spo2_update_timer.timeout.connect(self.update_spo2_display)
-        self.spo2_update_timer.start(1000)
-
         self.serialPortTimer = QTimer(self)
         self.serialPortTimer.timeout.connect(self.data_receive)
 
@@ -113,7 +99,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.procDataTimer.timeout.connect(self.data_process)
 
         self.simulateTimer = QTimer(self)
-        self.simulateTimer.timeout.connect(self.data_process)
+        self.simulateTimer.timeout.connect(self.receive_simulate_data)
 
         self.alarm_player = QMediaPlayer()
         self.alarm_player.setMedia(QMediaContent(QUrl.fromLocalFile('alarm.mp3')))
@@ -179,7 +165,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             return
 
         self.serialPortTimer.start(2)
-        self.procDataTimer.start(2)
+        self.procDataTimer.start(10)
 
         self.status_label.setText("串口已打开")
         self.status_label.setStyleSheet("color: #ffffff")
@@ -223,7 +209,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                     self.analyzeSPO2Data(self.mPackAfterUnpackArr[i])
                 # 保存数据
                 if self.saveDataPath:
-                    if self.limit < 446:
+                    if self.limit < 4460:
                         with open(self.saveDataPath, 'a') as file:
                             data = []
                             for j in range(0, 8):
@@ -235,11 +221,11 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                         self.limit = 0
             del self.mPackAfterUnpackArr[0:num]
 
-        if len(self.mECG1WaveList) > 10:
+        if len(self.mECG1WaveList) > 1:
             self.drawECGWave()
-        if len(self.mRESPWaveList) > 10:
+        if len(self.mRESPWaveList) > 1:
             self.drawRESPWave()
-        if len(self.mSPO2WaveList) > 10:
+        if len(self.mSPO2WaveList) > 1:
             self.drawSPO2Wave()
 
     def analyzeECGData(self, data):
@@ -257,6 +243,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.DL1_label.setStyleSheet("color:green")
         elif data[1] == 0x04:
             self.current_hr = data[2] << 8 | data[3]
+            self.update_hr_display()
 
     def analyzeRESPData(self, data):
         if data[1] == 0x02:
@@ -269,6 +256,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.DL2_label.setStyleSheet("color:green")
             else:
                 self.DL2_label.setStyleSheet("color:red")
+            self.update_resp_display()
 
     # 处理血氧数据
     def analyzeSPO2Data(self, data):
@@ -286,8 +274,10 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.DL4_label.setStyleSheet("color:red")
         elif data[1] == 0x03:
             self.current_spo2 = data[3]
+            self.update_spo2_display()
         elif data[1] == 0x06:
-            self.curren_pr = data[2]
+            self.current_pr = data[2]
+            self.update_pr_display()
 
     def drawECGWave(self):
         if not self.mECG1WaveList:
@@ -325,6 +315,42 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         # 自动滚动到最右侧以显示新波形
         self.ecg1_graphicsView.setSceneRect(0, 0, len(self.mECG1WaveList)*scale_x, view_height)
         self.ecg1_graphicsView.horizontalScrollBar().setValue(self.ecg1_graphicsView.horizontalScrollBar().maximum())
+
+    def drawEcgWave(self):
+        iCnt = len(self.mEcgWavelist)
+        self.painterEcg.setBrush(Qt.white)
+        self.painterEcg.setPen(QPen(Qt.white, 1, Qt.SolidLine))
+        if iCnt > self.maxEcgLength - self.mEcgXStep:
+            # 后半部分刷白
+            # QRect函数 构架矩阵
+            rct = QRect(self.mEcgXStep, 0, self.maxEcgLength - self.mEcgXStep, self.maxEcgHeight)
+            self.painterEcg.drawRect(rct)
+
+            # 前面部分刷白
+            rct = QRect(0, 0, 10 + iCnt - (self.maxEcgLength - self.mEcgXStep), self.maxEcgHeight)
+            self.painterEcg.drawRect(rct)
+        else:
+            # 指定部分刷白
+            rct = QRect(self.mEcgXStep, 0, iCnt + 10, self.maxEcgHeight)
+            self.painterEcg.drawRect(rct)
+
+        # 设置画笔
+        pen = QPen(Qt.black, 2, Qt.SolidLine)
+        self.painterEcg.setPen(pen)  # 设置绘图笔的颜色为黑色，宽度为2，样式为实线
+
+        # 画图
+        for i in range(iCnt - 1):
+            point1 = QPoint(self.mEcgXStep, int(self.maxEcgHeight - self.mEcgWavelist[i] / 5))
+            point2 = QPoint(self.mEcgXStep + 1, int(self.maxEcgHeight - self.mEcgWavelist[i + 1] / 5))
+            self.painterEcg.drawLine(point1, point2)
+            self.mEcgXStep += 1
+            if self.mEcgXStep > self.maxEcgLength:
+                self.mEcgXStep = 0
+
+        # 删除iCnt-1个数据，保留最后一个数据，下次画图时起点与现在尾接上，不会出现断线
+        del self.mEcgWavelist[0:iCnt - 1]
+        # 更新波形
+        self.ECG_wave.setPixmap(self.pixmapEcg)
     
     def drawRESPWave(self):
         if not self.mRESPWaveList:
@@ -394,10 +420,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
             if self.alarm_player.state() != QMediaPlayer.PlayingState:
                 self.alarm_player.play()
-                    
-            if self.hr_update_timer.interval() != 500:
-                self.hr_update_timer.setInterval(500) # 周期改为500ms
-                self.hr_update_timer.start()
 
             if self.HR_blink_state:
                 self.HR_label.setFont(QFont("Agency FB", 120))
@@ -412,9 +434,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.alarm_player.stop()
                 self.is_alarming = False
 
-            if self.hr_update_timer.interval() != 1000:
-                self.hr_update_timer.setInterval(1000)
-                self.hr_update_timer.start()
             self.HR_label.setFont(QFont("Agency FB", 120))
             self.HR_label.setStyleSheet("color: #00ff00")  # 绿色
             self.HR_blink_state = False  # 重置闪烁状态
@@ -429,10 +448,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
             if self.alarm_player.state() != QMediaPlayer.PlayingState:
                 self.alarm_player.play()
-                    
-            if self.resp_update_timer.interval() != 500:
-                self.resp_update_timer.setInterval(500) # 周期改为500ms
-                self.resp_update_timer.start()
 
             if self.RESP_blink_state:
                 self.RESP_label.setFont(QFont("Agency FB", 120))
@@ -446,17 +461,13 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.alarm_player.stop()
                 self.is_alarming = False
 
-            if self.resp_update_timer.interval() != 1000:
-                self.resp_update_timer.setInterval(1000)
-                self.resp_update_timer.start()
             self.RESP_label.setFont(QFont("Agency FB", 120))
             self.RESP_label.setStyleSheet("color: #ffc300")
             self.RESP_blink_state = False  # 重置闪烁状态
 
     def update_spo2_display(self):
-        """更新脉率显示标签"""
+        """更新呼吸率显示标签"""
         self.SpO2_label.setText(f"{self.current_spo2}")
-        self.PR_label.setText(f"{self.current_pr}")
         if self.current_spo2 > 0 and self.current_spo2 <= self.SPO2_threshold_low:
             if not self.is_alarming:
                 self.alarm_player.play()
@@ -464,10 +475,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
             if self.alarm_player.state() != QMediaPlayer.PlayingState:
                 self.alarm_player.play()
-                    
-            if self.spo2_update_timer.interval() != 500:
-                self.spo2_update_timer.setInterval(500)
-                self.spo2_update_timer.start()
 
             if self.SPO2_blink_state:
                 self.SpO2_label.setFont(QFont("Agency FB", 80))
@@ -476,6 +483,23 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.SpO2_label.setFont(QFont("Agency FB", 90))
 
             self.SPO2_blink_state = not self.SPO2_blink_state
+
+        else:
+            if self.is_alarming:
+                self.alarm_player.stop()
+                self.is_alarming = False
+
+            self.SpO2_label.setFont(QFont("Agency FB", 80))
+            self.SpO2_label.setStyleSheet("color: #00ffee")
+            self.SPO2_blink_state = False
+
+    def update_pr_display(self):
+        """更新脉率显示标签"""
+        self.PR_label.setText(f"{self.current_pr}")
+        if self.current_pr > 0 and self.current_pr <= self.PR_threshold_low and self.current_pr >= self.PR_threshold_high:
+            if not self.is_alarming:
+                self.alarm_player.play()
+                self.is_alarming = True
 
             if self.PR_blink_state:
                 self.PR_label.setFont(QFont("Agency FB", 80))
@@ -490,15 +514,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.alarm_player.stop()
                 self.is_alarming = False
 
-            if self.spo2_update_timer.interval() != 1000:
-                self.spo2_update_timer.setInterval(1000)
-                self.spo2_update_timer.start()
-            self.SpO2_label.setFont(QFont("Agency FB", 80))
-            self.SpO2_label.setStyleSheet("color: #00ffee")
-
             self.PR_label.setFont(QFont("Agency FB", 80))
             self.PR_label.setStyleSheet("color: #00ffee")
-            self.SPO2_blink_state = False
             self.PR_blink_state = False
 
     def SJ_slot(self, path):
@@ -506,9 +523,10 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             name = self.name_label.text()
             sex = "m" if self.sex_label.text() == "男" else "f"
             mode = self.Info_Dialog.comboBox_2.currentIndex()
-            time = self.date_label + "_" + self.time_label
+            time_label = self.date_label.text() + "_" + self.time_label.text()
+            time_label = time_label.replace(":", "-")
 
-            self.filepath = os.getcwd() + rf"\Data\{name}_{sex}_{mode}_{time}.txt"
+            self.filepath = os.getcwd() + rf"\Data\{name}_{sex}_{mode}_{time_label}.txt"
             self.saveDataPath = self.filepath
             QMessageBox.information(self, "提示", f"数据保存至{self.filepath}", QMessageBox.Yes)
         else:
@@ -517,7 +535,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
 
     def load_slot(self, path):
-        self.loadDataPath = path
         basename = os.path.basename(path)
 
         # 检查文件名是否符合标准
@@ -529,24 +546,30 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             self.name_label.setText(name)
             self.sex_label.setText("男" if sex == "m" else "女")
             self.mode_label.setText(mode)
-        
-        # 打开并读取文件，一次读取32个字节
-        with open(path, "rb") as file:
-            data = file.read(32)
-            while data:
-                self.mPackAfterUnpackArray.append(data)
-            else:
-                QMessageBox.information(self, "提示", "数据加载完毕，是否解除", QMessageBox.Yes, QMessageBox.No)
-                if QMessageBox.Yes:
-                    self.name_label.setText("None")
-                    self.sex_label.setText("None")
-                    self.mode_label.setText("None")
 
-                    self.clear_all()
-                else:
-                    return
-
+        self.data_file = open(path, "rb")
         self.simulateTimer.start(2)
+        self.procDataTimer.start(10)
+    
+    def receive_simulate_data(self):
+        data = self.data_file.readline()
+        if data:
+            data_list = eval(data.strip())
+            byte_data = bytes(data_list)
+            self.mPackAfterUnpackArr.append(byte_data)
+        else:
+            QMessageBox.information(self, "提示", "数据加载完毕，已解除", QMessageBox.Ok)
+            self.data_file.close()
+            if QMessageBox.Yes:
+                self.name_label.setText("None")
+                self.sex_label.setText("None")
+                self.mode_label.setText("None")
+
+                self.clear_all()
+                self.simulateTimer.stop()
+                self.procDataTimer.stop()
+            else:
+                return
 
     def JC_slot(self):
         QMessageBox.warning(self, "警告", "确定解除患者？", QMessageBox.Yes | QMessageBox.No)
@@ -566,20 +589,17 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.current_resp = 0
         self.current_spo2 = 0
 
-        self.hr_update_timer.stop()
-        self.resp_update_timer.stop()
-        self.spo2_update_timer.stop()
-
         self.HR_waveform_scene.clear()
         self.RESP_waveform_scene.clear()
         self.SPO2_waveform_scene.clear()
+
+        self.mPackAfterUnpackArr = []
 
         self.mECG1WaveList = []
         self.mRESPWaveList = []
         self.mSPO2WaveList = []
 
         self.saveDataPath = ""
-        self.simulateTimer.stop()
 
         self.HR_label.setText("0")
         self.RESP_label.setText("0")
