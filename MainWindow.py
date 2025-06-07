@@ -315,42 +315,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         # 自动滚动到最右侧以显示新波形
         self.ecg1_graphicsView.setSceneRect(0, 0, len(self.mECG1WaveList)*scale_x, view_height)
         self.ecg1_graphicsView.horizontalScrollBar().setValue(self.ecg1_graphicsView.horizontalScrollBar().maximum())
-
-    def drawEcgWave(self):
-        iCnt = len(self.mEcgWavelist)
-        self.painterEcg.setBrush(Qt.white)
-        self.painterEcg.setPen(QPen(Qt.white, 1, Qt.SolidLine))
-        if iCnt > self.maxEcgLength - self.mEcgXStep:
-            # 后半部分刷白
-            # QRect函数 构架矩阵
-            rct = QRect(self.mEcgXStep, 0, self.maxEcgLength - self.mEcgXStep, self.maxEcgHeight)
-            self.painterEcg.drawRect(rct)
-
-            # 前面部分刷白
-            rct = QRect(0, 0, 10 + iCnt - (self.maxEcgLength - self.mEcgXStep), self.maxEcgHeight)
-            self.painterEcg.drawRect(rct)
-        else:
-            # 指定部分刷白
-            rct = QRect(self.mEcgXStep, 0, iCnt + 10, self.maxEcgHeight)
-            self.painterEcg.drawRect(rct)
-
-        # 设置画笔
-        pen = QPen(Qt.black, 2, Qt.SolidLine)
-        self.painterEcg.setPen(pen)  # 设置绘图笔的颜色为黑色，宽度为2，样式为实线
-
-        # 画图
-        for i in range(iCnt - 1):
-            point1 = QPoint(self.mEcgXStep, int(self.maxEcgHeight - self.mEcgWavelist[i] / 5))
-            point2 = QPoint(self.mEcgXStep + 1, int(self.maxEcgHeight - self.mEcgWavelist[i + 1] / 5))
-            self.painterEcg.drawLine(point1, point2)
-            self.mEcgXStep += 1
-            if self.mEcgXStep > self.maxEcgLength:
-                self.mEcgXStep = 0
-
-        # 删除iCnt-1个数据，保留最后一个数据，下次画图时起点与现在尾接上，不会出现断线
-        del self.mEcgWavelist[0:iCnt - 1]
-        # 更新波形
-        self.ECG_wave.setPixmap(self.pixmapEcg)
     
     def drawRESPWave(self):
         if not self.mRESPWaveList:
@@ -588,6 +552,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.current_hr = 0
         self.current_resp = 0
         self.current_spo2 = 0
+        self.current_pr = 0
 
         self.HR_waveform_scene.clear()
         self.RESP_waveform_scene.clear()
