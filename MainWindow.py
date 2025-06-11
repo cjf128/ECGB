@@ -6,19 +6,18 @@ import os
 import random
 import re
 import sys
-from PyQt5.QtWidgets import QMainWindow, QFrame, QGraphicsScene, QMessageBox, QApplication, QGraphicsPathItem
-from PyQt5.QtCore import QTimer, Qt, QDateTime, pyqtSignal, QUrl
-from PyQt5.QtGui import QIcon, QPainterPath, QPen, QGuiApplication, QFont, QColor
+from PyQt5.QtWidgets import QMainWindow, QFrame, QGraphicsScene, QMessageBox, QApplication, QGraphicsPathItem, QGraphicsLineItem
+from PyQt5.QtCore import QTimer, Qt, QDateTime, pyqtSignal, QUrl, QRect, QPoint
+from PyQt5.QtGui import QIcon, QPainterPath, QPen, QGuiApplication, QFont, QColor, QPixmap, QPainter
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 
+from numpy import byte
 import serial
 from CK_Dialog import CK_Dialog
 from Info_Dialog import Info_Dialog
 from BJ_Dialog import BJ_Dialog
 from Load_Dialog import Load_Dialog
 from PackUnpack import PackUnpack
-
-# from Load_Dialog import Load_Dialog
 from ui_MainWindow import Ui_ECGB_Window
 
 
@@ -64,28 +63,37 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
         self.ser = serial.Serial()
         self.mPackUnpck = PackUnpack()
-        self.mECG1WaveList = []
-        self.mRESPWaveList = []
-        self.mSPO2WaveList = []
         self.time_list = []
 
-        self.HR_waveform_scene = QGraphicsScene()
-        self.ecg1_graphicsView.setScene(self.HR_waveform_scene)
-        self.ecg1_graphicsView.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.ecg1_graphicsView.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.ecg1_graphicsView.setFrameShape(QFrame.NoFrame)
-        
-        self.RESP_waveform_scene = QGraphicsScene()
-        self.resp2_graphicsView.setScene(self.RESP_waveform_scene)
-        self.resp2_graphicsView.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.resp2_graphicsView.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.resp2_graphicsView.setFrameShape(QFrame.NoFrame)
+        # ECG
+        self.mECG1WaveList = []  # 线性链表，内容为波形数据
+        self.mEcgXStep = 0  # 定义波形的X轴步长
+        self.maxEcgLength = self.ECG_wave.width()  # # 定义波形的最大长度
+        self.maxEcgHeight = self.ECG_wave.height()  # 定义波形的最大高度
+        self.pixmapEcg = QPixmap(self.ECG_wave.width(), self.ECG_wave.height())
+        self.pixmapEcg.fill(Qt.black)  # 初始化画布
+        self.ECG_wave.setPixmap(self.pixmapEcg)  # 显示画布
+        self.painterEcg = QPainter(self.pixmapEcg)
 
-        self.SPO2_waveform_scene = QGraphicsScene()
-        self.spo2_graphicsView.setScene(self.SPO2_waveform_scene)
-        self.spo2_graphicsView.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.spo2_graphicsView.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.spo2_graphicsView.setFrameShape(QFrame.NoFrame)
+        # Resp
+        self.mRESPWaveList = [] 
+        self.mRespXStep = 0  # 定义RESP波形的X轴坐标
+        self.maxRespLength = self.RESP_wave.width()   # 定义RESP波形的最大长度
+        self.maxRespHeight = self.RESP_wave.height()  # 定义RESP波形的最大高度
+        self.pixmapResp = QPixmap(self.RESP_wave.width(), self.RESP_wave.height())
+        self.pixmapResp.fill(Qt.black)  # 初始化画布
+        self.RESP_wave.setPixmap(self.pixmapResp)  # 显示画布
+        self.painterResp = QPainter(self.pixmapResp)
+
+        # SPO2
+        self.mSPO2WaveList = []  # 线性链表，内容位RESP的波形数据
+        self.mSpo2XStep = 0  # 定义RESP波形的X轴步长
+        self.maxSpo2Length = self.SPO2_wave.width()   # 定义RESP波形的最大长度
+        self.maxSpo2Height = self.SPO2_wave.height()  # 定义RESP波形的最大高度
+        self.pixmapSpo2 = QPixmap(self.SPO2_wave.width(), self.SPO2_wave.height())
+        self.pixmapSpo2.fill(Qt.black)  # 初始化画布
+        self.SPO2_wave.setPixmap(self.pixmapSpo2)  # 显示画布
+        self.painterSpo2 = QPainter(self.pixmapSpo2)
 
         # 时间更新定时器
         self.clock_timer = QTimer(self)
@@ -111,8 +119,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.RESP_threshold_high = 24
         self.SPO2_threshold_low = 94
         self.PR_threshold_low = 60
-        self.PR_threshold_high = 100
-        self.maxPoints = 100
+        self.PR_threshold_high = 500
+        self.maxPoints = 300
 
         self.current_hr = 0
         self.current_resp = 0
@@ -221,11 +229,11 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                         self.limit = 0
             del self.mPackAfterUnpackArr[0:num]
 
-        if len(self.mECG1WaveList) > 1:
+        if len(self.mECG1WaveList) > 2:
             self.drawECGWave()
-        if len(self.mRESPWaveList) > 1:
+        if len(self.mRESPWaveList) > 2:
             self.drawRESPWave()
-        if len(self.mSPO2WaveList) > 1:
+        if len(self.mSPO2WaveList) > 2:
             self.drawSPO2Wave()
 
     def analyzeECGData(self, data):
@@ -251,12 +259,12 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             self.mRESPWaveList.append(resp)
         elif data[1] == 0x03:
             self.current_resp = data[2] << 8 | data[3]
+            self.update_resp_display()
         elif data[1] == 0x06:
             if data[2] == 1:
                 self.DL2_label.setStyleSheet("color:green")
             else:
                 self.DL2_label.setStyleSheet("color:red")
-            self.update_resp_display()
 
     # 处理血氧数据
     def analyzeSPO2Data(self, data):
@@ -280,99 +288,102 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             self.update_pr_display()
 
     def drawECGWave(self):
-        if not self.mECG1WaveList:
+        iCnt = len(self.mECG1WaveList)
+        if iCnt < 2:
             return
 
-        self.HR_waveform_scene.clear()
+        self.painterEcg.setBrush(Qt.black)
+        self.painterEcg.setPen(QPen(Qt.black, 1, Qt.SolidLine))
 
-        view_width = self.ecg1_graphicsView.width()
-        view_height = self.ecg1_graphicsView.height()
+        if iCnt > self.maxEcgLength - self.mEcgXStep:
+            self.painterEcg.drawRect(QRect(self.mEcgXStep, 0, self.maxEcgLength - self.mEcgXStep, self.maxEcgHeight))
+            self.painterEcg.drawRect(QRect(0, 0, 10 + iCnt - (self.maxEcgLength - self.mEcgXStep), self.maxEcgHeight))
+        else:
+            self.painterEcg.drawRect(QRect(self.mEcgXStep, 0, iCnt + 10, self.maxEcgHeight))
 
-        # 计算每个点的缩放比例
-        scale_x = view_width / self.maxPoints
-        scale_y = view_height / 2 / 4096
+        pen = QPen(QColor("#00ff00"), 2, Qt.SolidLine)
+        self.painterEcg.setPen(pen)
 
-        # 仅保留最后maxPoints个数据点以实现滚动
-        if len(self.mECG1WaveList) > self.maxPoints:
-            self.mECG1WaveList = self.mECG1WaveList[-self.maxPoints:]
+        for i in range(iCnt - 1):
+            y1 = int((self.maxEcgHeight - self.mECG1WaveList[i]) / 5)
+            y2 = int((self.maxEcgHeight - self.mECG1WaveList[i + 1]) / 5)
+            x1 = self.mEcgXStep
+            x2 = self.mEcgXStep + 1
 
-        # 创建路径并移动到第一个点
-        path = QPainterPath()
-        start_x = 0
-        path.moveTo(start_x, (self.mECG1WaveList[0] - 2048) * scale_y + view_height / 2)
+            self.painterEcg.drawLine(QPoint(x1, y1), QPoint(x2, y2))
 
-        # 绘制所有线段
-        for i in range(1, len(self.mECG1WaveList)):
-            x = i * scale_x
-            y = (self.mECG1WaveList[i] - 2048) * scale_y + view_height / 2
-            path.lineTo(x, y)
+            self.mEcgXStep += 1
+            if self.mEcgXStep > self.maxEcgLength:
+                self.mEcgXStep = 0
 
-        # 添加路径到场景
-        path_item = QGraphicsPathItem(path)
-        path_item.setPen(QPen(QColor("#09ff00"), 2))
-        self.HR_waveform_scene.addItem(path_item)
+        self.mECG1WaveList = self.mECG1WaveList[-1:]
+        self.ECG_wave.setPixmap(self.pixmapEcg)
 
-        # 自动滚动到最右侧以显示新波形
-        self.ecg1_graphicsView.setSceneRect(0, 0, len(self.mECG1WaveList)*scale_x, view_height)
-        self.ecg1_graphicsView.horizontalScrollBar().setValue(self.ecg1_graphicsView.horizontalScrollBar().maximum())
     
     def drawRESPWave(self):
-        if not self.mRESPWaveList:
+        iCnt = len(self.mRESPWaveList)
+        if iCnt < 2:
             return
 
-        # 清除旧内容（可选）
-        self.RESP_waveform_scene.clear()
+        self.painterResp.setBrush(Qt.black)
+        self.painterResp.setPen(QPen(Qt.black, 1, Qt.SolidLine))
 
-        view_width = self.resp2_graphicsView.width()
-        view_height = self.resp2_graphicsView.height()
+        if iCnt > self.maxRespLength - self.mRespXStep:
+            self.painterResp.drawRect(QRect(self.mRespXStep, 0, self.maxRespLength - self.mRespXStep, self.maxRespHeight))
+            self.painterResp.drawRect(QRect(0, 0, 10 + iCnt - (self.maxRespLength - self.mRespXStep), self.maxRespHeight))
+        else:
+            self.painterResp.drawRect(QRect(self.mRespXStep, 0, iCnt + 10, self.maxRespHeight))
 
-        scale_x = view_width / self.maxPoints
-        scale_y = view_height / 2 / 4096
+        pen = QPen(QColor("#ffb300"), 2, Qt.SolidLine)
+        self.painterResp.setPen(pen)
 
-        path = QPainterPath()
-        path.moveTo(0, (self.mRESPWaveList[0] - 2048) * scale_y + view_height / 2)
+        for i in range(iCnt - 1):
+            y1 = int((self.maxRespHeight - self.mRESPWaveList[i]) / 5)
+            y2 = int((self.maxRespHeight - self.mRESPWaveList[i + 1]) / 5)
+            x1 = self.mRespXStep
+            x2 = self.mRespXStep + 1
 
-        for i in range(1, len(self.mRESPWaveList)):
-            x = i * scale_x
-            y = (self.mRESPWaveList[i] - 2048) * scale_y + view_height / 2
-            path.lineTo(x, y)
+            self.painterResp.drawLine(QPoint(x1, y1), QPoint(x2, y2))
 
-        path_item = QGraphicsPathItem(path)
-        path_item.setPen(QPen(QColor("#ffc300"), 2))
-        self.RESP_waveform_scene.addItem(path_item)
+            self.mRespXStep += 1
+            if self.mRespXStep > self.maxRespLength:
+                self.mRespXStep = 0
 
-        # 保留最近 maxPoints 个点
-        if len(self.mRESPWaveList) > self.maxPoints:
-            self.mRESPWaveList = self.mRESPWaveList[-self.maxPoints:]
+        self.mRESPWaveList = self.mRESPWaveList[-1:]
+        self.RESP_wave.setPixmap(self.pixmapResp)
     
     def drawSPO2Wave(self):
-        if not self.mSPO2WaveList:
+        iCnt = len(self.mSPO2WaveList)
+        if iCnt < 2:
             return
 
-        # 清除旧内容（可选）
-        self.SPO2_waveform_scene.clear()
+        self.painterSpo2.setBrush(Qt.black)
+        self.painterSpo2.setPen(QPen(Qt.black, 1, Qt.SolidLine))
 
-        view_width = self.spo2_graphicsView.width()
-        view_height = self.spo2_graphicsView.height()
+        if iCnt > self.maxSpo2Length - self.mSpo2XStep:
+            self.painterSpo2.drawRect(QRect(self.mSpo2XStep, 0, self.maxSpo2Length - self.mSpo2XStep, self.maxSpo2Height))
+            self.painterSpo2.drawRect(QRect(0, 0, 10 + iCnt - (self.maxSpo2Length - self.mSpo2XStep), self.maxSpo2Height))
+        else:
+            self.painterSpo2.drawRect(QRect(self.mSpo2XStep, 0, iCnt + 10, self.maxSpo2Height))
 
-        scale_x = view_width / self.maxPoints
-        scale_y = view_height / 2 / 4096
+        pen = QPen(QColor("#00ffee"), 2, Qt.SolidLine)
+        self.painterSpo2.setPen(pen)
 
-        path = QPainterPath()
-        path.moveTo(0, (self.mSPO2WaveList[0] - 2048) * scale_y + view_height / 2)
+        for i in range(iCnt - 1):
+            y1 = int((self.maxSpo2Height - self.mSPO2WaveList[i]) / 5)
+            y2 = int((self.maxSpo2Height - self.mSPO2WaveList[i + 1]) / 5)
+            x1 = self.mSpo2XStep
+            x2 = self.mSpo2XStep + 1
 
-        for i in range(1, len(self.mSPO2WaveList)):
-            x = i * scale_x
-            y = (self.mSPO2WaveList[i] - 2048) * scale_y + view_height / 2
-            path.lineTo(x, y)
+            self.painterSpo2.drawLine(QPoint(x1, y1), QPoint(x2, y2))
 
-        path_item = QGraphicsPathItem(path)
-        path_item.setPen(QPen(QColor("#00ffee"), 2))
-        self.SPO2_waveform_scene.addItem(path_item)
+            self.mSpo2XStep += 1
+            if self.mSpo2XStep > self.maxSpo2Length:
+                self.mSpo2XStep = 0
 
-        # 保留最近 maxPoints 个点
-        if len(self.mSPO2WaveList) > self.maxPoints:
-            self.mSPO2WaveList = self.mSPO2WaveList[-self.maxPoints:]
+        self.mSPO2WaveList = self.mSPO2WaveList[-1:]
+        self.SPO2_wave.setPixmap(self.pixmapSpo2)
+
 
     def update_hr_display(self):
         """更新心率显示标签"""
@@ -388,9 +399,17 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             if self.HR_blink_state:
                 self.HR_label.setFont(QFont("Agency FB", 120))
                 self.HR_label.setStyleSheet("color: #ff0000")
+                if self.current_hr >= self.HR_threshold_high:  # 高心率闪烁
+                    self.state_hr_label.setText("心率过速！")
+                    self.state_hr_label.setStyleSheet("color: #ff0000")
+                elif self.current_hr <= self.HR_threshold_low:
+                    self.state_hr_label.setText("心率过缓！")
+                    self.state_hr_label.setStyleSheet("color: #ff0000")
             else:
                 self.HR_label.setFont(QFont("Agency FB", 130))
                 self.HR_label.setStyleSheet("color: #FFFFFF")
+                self.state_hr_label.setText("正常")
+                self.state_hr_label.setStyleSheet("color: #00ff00")
 
             self.HR_blink_state = not self.HR_blink_state
         else:
@@ -405,7 +424,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
     def update_resp_display(self):
         """更新呼吸率显示标签"""
         self.RESP_label.setText(f"{self.current_resp}")
-        if self.current_resp >= self.RESP_threshold_high or self.current_resp > 0 and self.current_resp <= self.RESP_threshold_low:
+        if self.current_resp > self.RESP_threshold_high or self.current_resp > 0 and self.current_resp < self.RESP_threshold_low:
             if not self.is_alarming:
                 self.alarm_player.play()
                 self.is_alarming = True
@@ -416,8 +435,16 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             if self.RESP_blink_state:
                 self.RESP_label.setFont(QFont("Agency FB", 120))
                 self.RESP_label.setStyleSheet("color: #ff0000")
+                if self.current_resp > self.RESP_threshold_high:  # 高心率闪烁
+                    self.state_resp_label.setText("呼吸过快！")
+                    self.state_resp_label.setStyleSheet("color: #ff0000")
+                elif self.current_resp < self.RESP_threshold_low:
+                    self.state_resp_label.setText("呼吸过慢！")
+                    self.state_resp_label.setStyleSheet("color: #ff0000")
             else:
                 self.RESP_label.setFont(QFont("Agency FB", 130))
+                self.state_hr_label.setText("正常")
+                self.state_hr_label.setStyleSheet("color: #00ff00")
 
             self.RESP_blink_state = not self.RESP_blink_state
         else:
@@ -432,7 +459,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
     def update_spo2_display(self):
         """更新呼吸率显示标签"""
         self.SpO2_label.setText(f"{self.current_spo2}")
-        if self.current_spo2 > 0 and self.current_spo2 <= self.SPO2_threshold_low:
+        if self.current_spo2 > 0 and self.current_spo2 < self.SPO2_threshold_low:
             if not self.is_alarming:
                 self.alarm_player.play()
                 self.is_alarming = True
@@ -443,8 +470,12 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             if self.SPO2_blink_state:
                 self.SpO2_label.setFont(QFont("Agency FB", 80))
                 self.SpO2_label.setStyleSheet("color: #ff0000")
+                self.state_hr_label.setText("血氧饱和度过低！")
+                self.state_hr_label.setStyleSheet("color: #ff0000")
             else:
                 self.SpO2_label.setFont(QFont("Agency FB", 90))
+                self.state_hr_label.setText("正常")
+                self.state_hr_label.setStyleSheet("color: #00ff00")
 
             self.SPO2_blink_state = not self.SPO2_blink_state
 
@@ -460,7 +491,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
     def update_pr_display(self):
         """更新脉率显示标签"""
         self.PR_label.setText(f"{self.current_pr}")
-        if self.current_pr > 0 and self.current_pr <= self.PR_threshold_low and self.current_pr >= self.PR_threshold_high:
+        if self.current_pr > 0 and self.current_pr < self.PR_threshold_low and self.current_pr > self.PR_threshold_high:
             if not self.is_alarming:
                 self.alarm_player.play()
                 self.is_alarming = True
@@ -468,8 +499,16 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             if self.PR_blink_state:
                 self.PR_label.setFont(QFont("Agency FB", 80))
                 self.PR_label.setStyleSheet("color: #ff0000")
+                if self.current_pr > self.PR_threshold_high:
+                    self.state_hr_label.setText("脉率过高！")
+                    self.state_hr_label.setStyleSheet("color: #ff0000")
+                elif self.current_pr < self.PR_threshold_low:
+                    self.state_hr_label.setText("脉率过低！")
+                    self.state_hr_label.setStyleSheet("color: #ff0000")
             else:
                 self.PR_label.setFont(QFont("Agency FB", 90))
+                self.state_hr_label.setText("正常")
+                self.state_hr_label.setStyleSheet("color: #00ff00")
 
             self.PR_blink_state = not self.PR_blink_state
 
@@ -497,12 +536,11 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             QMessageBox.warning(self, "警告", "请先输入患者信息！", QMessageBox.Yes)
             return
 
-
     def load_slot(self, path):
         basename = os.path.basename(path)
 
         # 检查文件名是否符合标准
-        if re.match(r"^[a-zA-Z0-9_]+_[mf]_[0-9]+_[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2}\.txt$", basename):
+        if re.match(r"^[\u4e00-\u9fa5a-zA-Z0-9_]+_[mf]_[0-9]+_[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2}\.txt$", basename):
             name = basename.split("_")[0]
             sex = basename.split("_")[1]
             mode = basename.split("_")[2]
@@ -511,8 +549,17 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             self.sex_label.setText("男" if sex == "m" else "女")
             self.mode_label.setText(mode)
 
+        # 清空所有图像为黑色
+        self.pixmapEcg.fill(Qt.black)
+        self.pixmapSpo2.fill(Qt.black)
+        self.pixmapResp.fill(Qt.black)
+
+        self.SPO2_wave.setPixmap(self.pixmapSpo2)
+        self.ECG_wave.setPixmap(self.pixmapEcg)
+        self.RESP_wave.setPixmap(self.pixmapResp)
+
         self.data_file = open(path, "rb")
-        self.simulateTimer.start(2)
+        self.simulateTimer.start(5)
         self.procDataTimer.start(10)
     
     def receive_simulate_data(self):
@@ -554,10 +601,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.current_spo2 = 0
         self.current_pr = 0
 
-        self.HR_waveform_scene.clear()
-        self.RESP_waveform_scene.clear()
-        self.SPO2_waveform_scene.clear()
-
         self.mPackAfterUnpackArr = []
 
         self.mECG1WaveList = []
@@ -565,6 +608,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.mSPO2WaveList = []
 
         self.saveDataPath = ""
+        self.is_alarming = False
 
         self.HR_label.setText("0")
         self.RESP_label.setText("0")
