@@ -354,7 +354,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
     
     def drawSPO2Wave(self):
         iCnt = len(self.mSPO2WaveList)
-        print(self.mSPO2WaveList[iCnt - 1])
         if iCnt < 2:
             return
 
@@ -371,10 +370,10 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.painterSpo2.setPen(pen)
 
         for i in range(iCnt - 1):
-            y1 = int(self.maxSpo2Height / 2 - (self.mSPO2WaveList[i] - 2048) / 15)
-            y2 = int(self.maxSpo2Height / 2 - (self.mSPO2WaveList[i + 1] - 2048) / 15)
-            # y1 = int((self.maxSpo2Height - self.mSPO2WaveList[i]) / 5)
-            # y2 = int((self.maxSpo2Height - self.mSPO2WaveList[i + 1]) / 5)
+            # y1 = int(self.maxSpo2Height / 2 - (self.mSPO2WaveList[i] - 2048) / 15)
+            # y2 = int(self.maxSpo2Height / 2 - (self.mSPO2WaveList[i + 1] - 2048) / 15)
+            y1 = int((self.maxSpo2Height - self.mSPO2WaveList[i]) / 5)
+            y2 = int((self.maxSpo2Height - self.mSPO2WaveList[i + 1]) / 5)
             x1 = self.mSpo2XStep
             x2 = self.mSpo2XStep + 1
 
