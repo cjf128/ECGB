@@ -1,12 +1,12 @@
 import sys
-from PyQt5.QtWidgets import QDialog, QApplication
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import pyqtSignal
+from PySide2.QtWidgets import QDialog, QApplication
+from PySide2.QtGui import QIcon
+from PySide2.QtCore import Signal
 
 from ui_Info_Dialog import Ui_Info_Dialog
 
 class Info_Dialog(QDialog, Ui_Info_Dialog):
-    setSignal = pyqtSignal(bool)
+    setSignal = Signal(bool)
 
     def __init__(self, parent=None):
         super(Info_Dialog, self).__init__()

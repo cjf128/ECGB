@@ -1,14 +1,14 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QDialog
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtSerialPort import QSerialPortInfo
-from PyQt5.QtGui import QIcon
+from PySide2.QtWidgets import QApplication, QDialog
+from PySide2.QtCore import Signal
+from PySide2.QtSerialPort import QSerialPortInfo
+from PySide2.QtGui import QIcon
 
 from ui_BJ_Dialog import Ui_BJ_Dialog
 
 
 class BJ_Dialog(QDialog, Ui_BJ_Dialog):
-    thresholdSignal = pyqtSignal(int, int, int, int, int)
+    thresholdSignal = Signal(int, int, int, int, int)
 
     def __init__(self, parent=None):
         super().__init__(parent)

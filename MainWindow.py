@@ -6,14 +6,12 @@ import os
 import random
 import re
 import sys
-from PyQt5.QtWidgets import QMainWindow, QFrame, QGraphicsScene, QMessageBox, QApplication, QGraphicsPathItem, QGraphicsLineItem
-from PyQt5.QtCore import QTimer, Qt, QDateTime, pyqtSignal, QUrl, QRect, QPoint
-from PyQt5.QtGui import QIcon, QPainterPath, QPen, QGuiApplication, QFont, QColor, QPixmap, QPainter
-from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
+from PySide2.QtWidgets import QMainWindow, QMessageBox, QApplication
+from PySide2.QtCore import QTimer, Qt, QDateTime, Signal, QUrl, QRect, QPoint
+from PySide2.QtGui import QIcon, QPen, QGuiApplication, QFont, QColor, QPixmap, QPainter
+from PySide2.QtMultimedia import QMediaPlayer, QMediaContent
 
-from numpy import byte
 import serial
-from sympy import print_glsl
 from CK_Dialog import CK_Dialog
 from Info_Dialog import Info_Dialog
 from BJ_Dialog import BJ_Dialog
@@ -21,9 +19,8 @@ from Load_Dialog import Load_Dialog
 from PackUnpack import PackUnpack
 from ui_MainWindow import Ui_ECGB_Window
 
-
 class MainWindow(QMainWindow, Ui_ECGB_Window):
-    THRESHOLD_SIGNAL = pyqtSignal(int, int, int, int, int, int, int)
+    THRESHOLD_SIGNAL = Signal(int, int, int, int, int, int, int)
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setupUi(self)

@@ -1,15 +1,15 @@
 import os
 import sys
-from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtGui import QIcon
+from PySide2.QtWidgets import QApplication, QDialog, QFileDialog
+from PySide2.QtCore import Signal
+from PySide2.QtGui import QIcon
 
 from ui_Load_Dialog import Ui_Load_Dialog
 
 
 
 class Load_Dialog(QDialog, Ui_Load_Dialog):
-    setSignal = pyqtSignal(str)
+    setSignal = Signal(str)
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)

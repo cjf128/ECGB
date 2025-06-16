@@ -1,13 +1,13 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QDialog
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtSerialPort import QSerialPortInfo
-from PyQt5.QtGui import QIcon
+from PySide2.QtWidgets import QApplication, QDialog
+from PySide2.QtCore import Signal
+from PySide2.QtSerialPort import QSerialPortInfo
+from PySide2.QtGui import QIcon
 from ui_CK_Dialog import Ui_CK_Dialog
 
 
 class CK_Dialog(QDialog, Ui_CK_Dialog):
-    serialSignal = pyqtSignal(str, str, str, str, str)
+    serialSignal = Signal(str, str, str, str, str)
 
     def __init__(self, parent=None):
         super(CK_Dialog, self).__init__(parent)
