@@ -65,33 +65,33 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.time_list = []
 
         # ECG
-        self.mECG1WaveList = []  # 线性链表，内容为波形数据
-        self.mEcgXStep = 0  # 定义波形的X轴步长
-        self.maxEcgLength = self.ECG_wave.width()  # # 定义波形的最大长度
-        self.maxEcgHeight = self.ECG_wave.height()  # 定义波形的最大高度
+        self.mECG1WaveList = [] 
+        self.mEcgXStep = 0 
+        self.maxEcgLength = self.ECG_wave.width()
+        self.maxEcgHeight = self.ECG_wave.height()
         self.pixmapEcg = QPixmap(self.ECG_wave.width(), self.ECG_wave.height())
-        self.pixmapEcg.fill(Qt.black)  # 初始化画布
-        self.ECG_wave.setPixmap(self.pixmapEcg)  # 显示画布
+        self.pixmapEcg.fill(Qt.black)
+        self.ECG_wave.setPixmap(self.pixmapEcg)
         self.painterEcg = QPainter(self.pixmapEcg)
 
         # Resp
         self.mRESPWaveList = [] 
-        self.mRespXStep = 0  # 定义RESP波形的X轴坐标
-        self.maxRespLength = self.RESP_wave.width()   # 定义RESP波形的最大长度
-        self.maxRespHeight = self.RESP_wave.height()  # 定义RESP波形的最大高度
+        self.mRespXStep = 0
+        self.maxRespLength = self.RESP_wave.width()
+        self.maxRespHeight = self.RESP_wave.height() 
         self.pixmapResp = QPixmap(self.RESP_wave.width(), self.RESP_wave.height())
-        self.pixmapResp.fill(Qt.black)  # 初始化画布
-        self.RESP_wave.setPixmap(self.pixmapResp)  # 显示画布
+        self.pixmapResp.fill(Qt.black)
+        self.RESP_wave.setPixmap(self.pixmapResp)
         self.painterResp = QPainter(self.pixmapResp)
 
         # SPO2
-        self.mSPO2WaveList = []  # 线性链表，内容位RESP的波形数据
-        self.mSpo2XStep = 0  # 定义RESP波形的X轴步长
-        self.maxSpo2Length = self.SPO2_wave.width()   # 定义RESP波形的最大长度
-        self.maxSpo2Height = self.SPO2_wave.height()  # 定义RESP波形的最大高度
+        self.mSPO2WaveList = [] 
+        self.mSpo2XStep = 0
+        self.maxSpo2Length = self.SPO2_wave.width() 
+        self.maxSpo2Height = self.SPO2_wave.height()
         self.pixmapSpo2 = QPixmap(self.SPO2_wave.width(), self.SPO2_wave.height())
-        self.pixmapSpo2.fill(Qt.black)  # 初始化画布
-        self.SPO2_wave.setPixmap(self.pixmapSpo2)  # 显示画布
+        self.pixmapSpo2.fill(Qt.black) 
+        self.SPO2_wave.setPixmap(self.pixmapSpo2)
         self.painterSpo2 = QPainter(self.pixmapSpo2)
 
         # 时间更新定时器
@@ -140,11 +140,11 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.clear_all()
         self.CK_Dialog.show()
 
-        # if self.name_label.text() != "None":
-        #     self.CK_Dialog.show()
-        # else:
-        #     QMessageBox.critical(self, "Error", "请先填写信息！")
-        #     return
+        if self.name_label.text() != "None":
+            self.CK_Dialog.show()
+        else:
+            QMessageBox.critical(self, "Error", "请先填写信息！")
+            return
     
     def serial_slot(self, portNum, baudRate, dataBits, stopBits, parity):
         if self.ser.isOpen():
