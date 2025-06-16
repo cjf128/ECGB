@@ -13,6 +13,7 @@ from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 
 from numpy import byte
 import serial
+from sympy import print_glsl
 from CK_Dialog import CK_Dialog
 from Info_Dialog import Info_Dialog
 from BJ_Dialog import BJ_Dialog
@@ -28,6 +29,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.setupUi(self)
         self.setWindowIcon(QIcon('./ECGB.ico'))
         self.setWindowTitle('ECGB')
+        self.setFixedSize(1100, 900)
 
         self.CK_Dialog = CK_Dialog()
         self.CK_Dialog.setWindowTitle('串口设置')
@@ -239,11 +241,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
     def analyzeECGData(self, data):
         if data[1] == 0x02:
             ecgData1 = data[2] << 8 | data[3]
-            ecgData2 = data[4] << 8 | data[5]
-            if ecgData1 != 0:
-                self.mECG1WaveList.append(ecgData1)
-            if ecgData2 != 0:
-                self.mECG1WaveList.append(ecgData2)
+            self.mECG1WaveList.append(ecgData1)
         elif data[1] == 0x03:
             if data[2] == 1:
                 self.DL1_label.setStyleSheet("color:red")
@@ -305,8 +303,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.painterEcg.setPen(pen)
 
         for i in range(iCnt - 1):
-            y1 = int((self.maxEcgHeight - self.mECG1WaveList[i]) / 5)
-            y2 = int((self.maxEcgHeight - self.mECG1WaveList[i + 1]) / 5)
+            y1 = int(self.maxEcgHeight / 2 - (self.mECG1WaveList[i] - 2048) / 15)
+            y2 = int(self.maxEcgHeight / 2 - (self.mECG1WaveList[i + 1] - 2048) / 15)
             x1 = self.mEcgXStep
             x2 = self.mEcgXStep + 1
 
@@ -338,6 +336,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.painterResp.setPen(pen)
 
         for i in range(iCnt - 1):
+            # y1 = int(self.maxRespHeight / 2 - (self.mRESPWaveList[i] - 2048) / 15)
+            # y2 = int(self.maxRespHeight / 2 - (self.mRESPWaveList[i + 1] - 2048) / 15)
             y1 = int((self.maxRespHeight - self.mRESPWaveList[i]) / 5)
             y2 = int((self.maxRespHeight - self.mRESPWaveList[i + 1]) / 5)
             x1 = self.mRespXStep
@@ -354,6 +354,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
     
     def drawSPO2Wave(self):
         iCnt = len(self.mSPO2WaveList)
+        print(self.mSPO2WaveList[iCnt - 1])
         if iCnt < 2:
             return
 
@@ -370,8 +371,10 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.painterSpo2.setPen(pen)
 
         for i in range(iCnt - 1):
-            y1 = int((self.maxSpo2Height - self.mSPO2WaveList[i]) / 5)
-            y2 = int((self.maxSpo2Height - self.mSPO2WaveList[i + 1]) / 5)
+            y1 = int(self.maxSpo2Height / 2 - (self.mSPO2WaveList[i] - 2048) / 15)
+            y2 = int(self.maxSpo2Height / 2 - (self.mSPO2WaveList[i + 1] - 2048) / 15)
+            # y1 = int((self.maxSpo2Height - self.mSPO2WaveList[i]) / 5)
+            # y2 = int((self.maxSpo2Height - self.mSPO2WaveList[i + 1]) / 5)
             x1 = self.mSpo2XStep
             x2 = self.mSpo2XStep + 1
 
@@ -408,11 +411,11 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             else:
                 self.HR_label.setFont(QFont("Agency FB", 130))
                 self.HR_label.setStyleSheet("color: #FFFFFF")
-                self.state_hr_label.setText("正常")
-                self.state_hr_label.setStyleSheet("color: #00ff00")
 
             self.HR_blink_state = not self.HR_blink_state
         else:
+            self.state_hr_label.setText("正常")
+            self.state_hr_label.setStyleSheet("color: #00ff00")
             if self.is_alarming:
                 self.alarm_player.stop()
                 self.is_alarming = False
@@ -435,7 +438,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             if self.RESP_blink_state:
                 self.RESP_label.setFont(QFont("Agency FB", 120))
                 self.RESP_label.setStyleSheet("color: #ff0000")
-                if self.current_resp > self.RESP_threshold_high:  # 高心率闪烁
+                if self.current_resp > self.RESP_threshold_high:
                     self.state_resp_label.setText("呼吸过快！")
                     self.state_resp_label.setStyleSheet("color: #ff0000")
                 elif self.current_resp < self.RESP_threshold_low:
@@ -443,11 +446,11 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                     self.state_resp_label.setStyleSheet("color: #ff0000")
             else:
                 self.RESP_label.setFont(QFont("Agency FB", 130))
-                self.state_hr_label.setText("正常")
-                self.state_hr_label.setStyleSheet("color: #00ff00")
 
             self.RESP_blink_state = not self.RESP_blink_state
         else:
+            self.state_hr_label.setText("正常")
+            self.state_hr_label.setStyleSheet("color: #00ff00")
             if self.is_alarming:
                 self.alarm_player.stop()
                 self.is_alarming = False
@@ -468,18 +471,16 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.alarm_player.play()
 
             if self.SPO2_blink_state:
-                self.SpO2_label.setFont(QFont("Agency FB", 80))
                 self.SpO2_label.setStyleSheet("color: #ff0000")
                 self.state_hr_label.setText("血氧饱和度过低！")
                 self.state_hr_label.setStyleSheet("color: #ff0000")
-            else:
-                self.SpO2_label.setFont(QFont("Agency FB", 90))
-                self.state_hr_label.setText("正常")
-                self.state_hr_label.setStyleSheet("color: #00ff00")
 
             self.SPO2_blink_state = not self.SPO2_blink_state
 
         else:
+            self.state_hr_label.setText("正常")
+            self.state_hr_label.setStyleSheet("color: #00ff00")
+
             if self.is_alarming:
                 self.alarm_player.stop()
                 self.is_alarming = False
@@ -560,6 +561,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
         self.data_file = open(path, "rb")
         self.simulateTimer.start(5)
+        self.status_label.setText("数据模拟中")
         self.procDataTimer.start(10)
     
     def receive_simulate_data(self):
@@ -603,9 +605,25 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
         self.mPackAfterUnpackArr = []
 
+        self.state_hr_label.setText("正常")
+        self.state_hr_label.setStyleSheet("color: #00ff00")
+
+        self.procDataTimer.stop()
+        self.simulateTimer.stop()
+        self.serialPortTimer.stop()
+
         self.mECG1WaveList = []
         self.mRESPWaveList = []
         self.mSPO2WaveList = []
+
+        self.mEcgXStep = 0
+        self.mRespXStep = 0
+        self.mSpo2XStep = 0
+
+        self.DL1_label.setStyleSheet("color: #ff0000")
+        self.DL2_label.setStyleSheet("color: #ff0000")
+        self.DL3_label.setStyleSheet("color: #000000")
+        self.DL4_label.setStyleSheet("color: #000000")
 
         self.saveDataPath = ""
         self.is_alarming = False
@@ -724,3 +742,4 @@ if __name__ == '__main__':
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
+
