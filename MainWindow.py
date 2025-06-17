@@ -26,7 +26,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.setupUi(self)
         self.setWindowIcon(QIcon('./ECGB.ico'))
         self.setWindowTitle('ECGB')
-        self.setFixedSize(1100, 900)
+        self.setFixedSize(1200, 900)
 
         self.CK_Dialog = CK_Dialog()
         self.CK_Dialog.setWindowTitle('串口设置')
@@ -138,8 +138,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
     def CK_slot(self):
         self.clear_all()
-        self.CK_Dialog.show()
-
         if self.name_label.text() != "None":
             self.CK_Dialog.show()
         else:
@@ -261,7 +259,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             else:
                 self.DL2_label.setStyleSheet("color:red")
 
-    # 处理血氧数据
     def analyzeSPO2Data(self, data):
         if data[1] == 0x02:
             spo2Data = data[2] << 8 | data[3]
@@ -271,10 +268,14 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             if data[2] == 0x01:
                 self.DL3_label.setText("手指脱落")
                 self.DL3_label.setStyleSheet("color:red")
+            else:
+                self.DL3_label.setStyleSheet("color:black")
         elif data[1] == 0x05:
             if data[2] == 0x01:
                 self.DL4_label.setText("探头脱落")
                 self.DL4_label.setStyleSheet("color:red")
+            else:
+                self.DL4_label.setStyleSheet("color:black")
         elif data[1] == 0x03:
             self.current_spo2 = data[3]
             self.update_spo2_display()
@@ -284,19 +285,19 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
     def drawECGWave(self):
         iCnt = len(self.mECG1WaveList)
-        if iCnt < 2:
-            return
 
         self.painterEcg.setBrush(Qt.black)
-        self.painterEcg.setPen(QPen(Qt.black, 1, Qt.SolidLine))
+        self.painterEcg.setPen(QPen(Qt.black, 2, Qt.SolidLine))
 
         if iCnt > self.maxEcgLength - self.mEcgXStep:
-            self.painterEcg.drawRect(QRect(self.mEcgXStep, 0, self.maxEcgLength - self.mEcgXStep, self.maxEcgHeight))
-            self.painterEcg.drawRect(QRect(0, 0, 10 + iCnt - (self.maxEcgLength - self.mEcgXStep), self.maxEcgHeight))
+            ECG1Rect = QRect(self.mEcgXStep, 0, self.maxEcgLength - self.mEcgXStep, self.maxEcgHeight)
+            ECG2Rect = QRect(0, 0, 10 + iCnt - (self.maxEcgLength - self.mEcgXStep), self.maxEcgHeight)
+            self.painterEcg.drawRect(ECG1Rect)
+            self.painterEcg.drawRect(ECG2Rect)
         else:
             self.painterEcg.drawRect(QRect(self.mEcgXStep, 0, iCnt + 10, self.maxEcgHeight))
 
-        pen = QPen(QColor("#00ff00"), 2, Qt.SolidLine)
+        pen = QPen(QColor("#00ff00"), 4, Qt.SolidLine)
         self.painterEcg.setPen(pen)
 
         for i in range(iCnt - 1):
@@ -317,26 +318,24 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
     
     def drawRESPWave(self):
         iCnt = len(self.mRESPWaveList)
-        if iCnt < 2:
-            return
 
         self.painterResp.setBrush(Qt.black)
-        self.painterResp.setPen(QPen(Qt.black, 1, Qt.SolidLine))
+        self.painterResp.setPen(QPen(Qt.black, 2, Qt.SolidLine))
 
         if iCnt > self.maxRespLength - self.mRespXStep:
-            self.painterResp.drawRect(QRect(self.mRespXStep, 0, self.maxRespLength - self.mRespXStep, self.maxRespHeight))
-            self.painterResp.drawRect(QRect(0, 0, 10 + iCnt - (self.maxRespLength - self.mRespXStep), self.maxRespHeight))
+            RESP1Rect = QRect(self.mRespXStep, 0, self.maxRespLength - self.mRespXStep, self.maxRespHeight)
+            RESP2Rect = QRect(0, 0, 10 + iCnt - (self.maxRespLength - self.mRespXStep), self.maxRespHeight)
+            self.painterResp.drawRect(RESP1Rect)
+            self.painterResp.drawRect(RESP2Rect)
         else:
             self.painterResp.drawRect(QRect(self.mRespXStep, 0, iCnt + 10, self.maxRespHeight))
 
-        pen = QPen(QColor("#ffb300"), 2, Qt.SolidLine)
+        pen = QPen(QColor("#ffb300"), 4, Qt.SolidLine)
         self.painterResp.setPen(pen)
 
         for i in range(iCnt - 1):
-            # y1 = int(self.maxRespHeight / 2 - (self.mRESPWaveList[i] - 2048) / 15)
-            # y2 = int(self.maxRespHeight / 2 - (self.mRESPWaveList[i + 1] - 2048) / 15)
-            y1 = int((self.maxRespHeight - self.mRESPWaveList[i]) / 5)
-            y2 = int((self.maxRespHeight - self.mRESPWaveList[i + 1]) / 5)
+            y1 = int((self.maxRespHeight - (self.mRESPWaveList[i] - 14000) * 0.005))
+            y2 = int((self.maxRespHeight - (self.mRESPWaveList[i+1] - 14000) * 0.005))
             x1 = self.mRespXStep
             x2 = self.mRespXStep + 1
 
@@ -351,24 +350,22 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
     
     def drawSPO2Wave(self):
         iCnt = len(self.mSPO2WaveList)
-        if iCnt < 2:
-            return
 
         self.painterSpo2.setBrush(Qt.black)
-        self.painterSpo2.setPen(QPen(Qt.black, 1, Qt.SolidLine))
+        self.painterSpo2.setPen(QPen(Qt.black, 2, Qt.SolidLine))
 
         if iCnt > self.maxSpo2Length - self.mSpo2XStep:
-            self.painterSpo2.drawRect(QRect(self.mSpo2XStep, 0, self.maxSpo2Length - self.mSpo2XStep, self.maxSpo2Height))
-            self.painterSpo2.drawRect(QRect(0, 0, 10 + iCnt - (self.maxSpo2Length - self.mSpo2XStep), self.maxSpo2Height))
+            SPO21Rect = QRect(self.mSpo2XStep, 0, self.maxSpo2Length - self.mSpo2XStep, self.maxSpo2Height)
+            SPO22Rect = QRect(0, 0, 10 + iCnt - (self.maxSpo2Length - self.mSpo2XStep), self.maxSpo2Height)
+            self.painterSpo2.drawRect(SPO21Rect)
+            self.painterSpo2.drawRect(SPO22Rect)
         else:
             self.painterSpo2.drawRect(QRect(self.mSpo2XStep, 0, iCnt + 10, self.maxSpo2Height))
 
-        pen = QPen(QColor("#00ffee"), 2, Qt.SolidLine)
+        pen = QPen(QColor("#00ffee"), 4, Qt.SolidLine)
         self.painterSpo2.setPen(pen)
 
         for i in range(iCnt - 1):
-            # y1 = int(self.maxSpo2Height / 2 - (self.mSPO2WaveList[i] - 2048) / 15)
-            # y2 = int(self.maxSpo2Height / 2 - (self.mSPO2WaveList[i + 1] - 2048) / 15)
             y1 = int((self.maxSpo2Height - self.mSPO2WaveList[i]) / 5)
             y2 = int((self.maxSpo2Height - self.mSPO2WaveList[i + 1]) / 5)
             x1 = self.mSpo2XStep
@@ -387,7 +384,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
     def update_hr_display(self):
         """更新心率显示标签"""
         self.HR_label.setText(f"{self.current_hr}")
-        if self.current_hr >= self.HR_threshold_high or self.current_hr > 0 and self.current_hr <= self.HR_threshold_low:
+        if self.current_hr > self.HR_threshold_high or self.current_hr > 0 and self.current_hr < self.HR_threshold_low:
             if not self.is_alarming:
                 self.alarm_player.play()
                 self.is_alarming = True
@@ -556,7 +553,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.RESP_wave.setPixmap(self.pixmapResp)
 
         self.data_file = open(path, "rb")
-        self.simulateTimer.start(5)
+        self.simulateTimer.start(2)
         self.status_label.setText("数据模拟中")
         self.procDataTimer.start(10)
     

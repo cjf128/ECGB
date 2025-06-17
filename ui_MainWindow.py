@@ -17,7 +17,7 @@ class Ui_ECGB_Window(object):
     def setupUi(self, ECGB_Window):
         if not ECGB_Window.objectName():
             ECGB_Window.setObjectName(u"ECGB_Window")
-        ECGB_Window.resize(1108, 849)
+        ECGB_Window.resize(1281, 849)
         self.centralwidget = QWidget(ECGB_Window)
         self.centralwidget.setObjectName(u"centralwidget")
         self.verticalLayout = QVBoxLayout(self.centralwidget)
@@ -260,7 +260,7 @@ class Ui_ECGB_Window(object):
         self.verticalLayout_12.setObjectName(u"verticalLayout_12")
         self.ECG_wave = QLabel(self.frame1)
         self.ECG_wave.setObjectName(u"ECG_wave")
-        self.ECG_wave.setMinimumSize(QSize(750, 200))
+        self.ECG_wave.setMinimumSize(QSize(800, 200))
 
         self.verticalLayout_12.addWidget(self.ECG_wave)
 
@@ -423,7 +423,7 @@ class Ui_ECGB_Window(object):
         self.verticalLayout_11.setObjectName(u"verticalLayout_11")
         self.RESP_wave = QLabel(self.frame_3)
         self.RESP_wave.setObjectName(u"RESP_wave")
-        self.RESP_wave.setMinimumSize(QSize(750, 0))
+        self.RESP_wave.setMinimumSize(QSize(800, 200))
 
         self.verticalLayout_11.addWidget(self.RESP_wave)
 
@@ -582,7 +582,7 @@ class Ui_ECGB_Window(object):
         self.verticalLayout_10.setObjectName(u"verticalLayout_10")
         self.SPO2_wave = QLabel(self.frame_4)
         self.SPO2_wave.setObjectName(u"SPO2_wave")
-        self.SPO2_wave.setMinimumSize(QSize(750, 200))
+        self.SPO2_wave.setMinimumSize(QSize(800, 200))
 
         self.verticalLayout_10.addWidget(self.SPO2_wave)
 
