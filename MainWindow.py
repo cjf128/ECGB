@@ -453,7 +453,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             self.RESP_blink_state = False  # 重置闪烁状态
 
     def update_spo2_display(self):
-        """更新呼吸率显示标签"""
+        """更新血氧显示标签"""
         self.SpO2_label.setText(f"{self.current_spo2}")
         if self.current_spo2 > 0 and self.current_spo2 < self.SPO2_threshold_low:
             if not self.is_alarming:
