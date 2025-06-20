@@ -23,7 +23,8 @@ class Load_Dialog(QDialog, Ui_Load_Dialog):
  
     def load_slot(self):
         path = self.ledtPath.text()
-        self.setSignal.emit(path)
+        if path:
+            self.setSignal.emit(path)
 
         self.close()
     

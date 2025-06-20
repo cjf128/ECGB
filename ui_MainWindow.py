@@ -119,14 +119,16 @@ class Ui_ECGB_Window(object):
 
         self.horizontalLayout_4.addWidget(self.line_6)
 
-        self.state_hr_label = QLabel(self.widget)
-        self.state_hr_label.setObjectName(u"state_hr_label")
-        self.state_hr_label.setMinimumSize(QSize(100, 0))
-        self.state_hr_label.setFont(font)
-        self.state_hr_label.setStyleSheet(u"color: rgb(0, 255, 0);")
-        self.state_hr_label.setAlignment(Qt.AlignCenter)
+        self.state_label = QLabel(self.widget)
+        self.state_label.setObjectName(u"state_label")
+        self.state_label.setMinimumSize(QSize(100, 0))
+        self.state_label.setFont(font)
+        self.state_label.setStyleSheet(u"color: rgb(0, 255, 0);\n"
+"border-radius: 5px;\n"
+"")
+        self.state_label.setAlignment(Qt.AlignCenter)
 
-        self.horizontalLayout_4.addWidget(self.state_hr_label)
+        self.horizontalLayout_4.addWidget(self.state_label)
 
         self.line_8 = QFrame(self.widget)
         self.line_8.setObjectName(u"line_8")
@@ -831,7 +833,7 @@ class Ui_ECGB_Window(object):
         self.mode_label.setText(QCoreApplication.translate("ECGB_Window", u"None", None))
         self.label_3.setText(QCoreApplication.translate("ECGB_Window", u"\u6027\u522b:", None))
         self.sex_label.setText(QCoreApplication.translate("ECGB_Window", u"None", None))
-        self.state_hr_label.setText(QCoreApplication.translate("ECGB_Window", u"\u6b63\u5e38", None))
+        self.state_label.setText(QCoreApplication.translate("ECGB_Window", u"\u6b63\u5e38", None))
         self.status_label.setText(QCoreApplication.translate("ECGB_Window", u"\u4e32\u53e3\u672a\u6253\u5f00", None))
         self.date_label.setText(QCoreApplication.translate("ECGB_Window", u"\u2014\u2014", None))
         self.time_label.setText(QCoreApplication.translate("ECGB_Window", u"\u2014\u2014", None))

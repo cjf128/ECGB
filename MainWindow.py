@@ -108,6 +108,13 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.simulateTimer = QTimer(self)
         self.simulateTimer.timeout.connect(self.receive_simulate_data)
 
+        self.updateTimer = QTimer(self)
+        self.updateTimer.setInterval(1000)
+        self.updateTimer.timeout.connect(self.update_hr_display)
+        self.updateTimer.timeout.connect(self.update_resp_display)
+        self.updateTimer.timeout.connect(self.update_spo2_display)
+        self.updateTimer.timeout.connect(self.update_pr_display)
+
         self.alarm_player = QMediaPlayer()
         self.alarm_player.setMedia(QMediaContent(QUrl.fromLocalFile('alarm.mp3')))
         self.is_alarming = False
@@ -135,7 +142,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.saveDataPath = ""
         self.limit = 0
 
-
     def CK_slot(self):
         self.clear_all()
         if self.name_label.text() != "None":
@@ -148,6 +154,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         if self.ser.isOpen():
             self.serialPortTimer.stop()
             self.procDataTimer.stop()
+            self.updateTimer.stop()
             try:
                 self.ser.close()
             except:
@@ -171,6 +178,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
         self.serialPortTimer.start(2)
         self.procDataTimer.start(10)
+        self.updateTimer.start()
 
         self.status_label.setText("串口已打开")
         self.status_label.setStyleSheet("color: #ffffff")
@@ -301,6 +309,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.painterEcg.setPen(pen)
 
         for i in range(iCnt - 1):
+            # y1 = int(self.maxEcgHeight / 2 - (self.mECG1WaveList[i] - 2048) / 3)
+            # y2 = int(self.maxEcgHeight / 2 - (self.mECG1WaveList[i + 1] - 2048) / 3)
             y1 = int(self.maxEcgHeight / 2 - (self.mECG1WaveList[i] - 2048) / 15)
             y2 = int(self.maxEcgHeight / 2 - (self.mECG1WaveList[i + 1] - 2048) / 15)
             x1 = self.mEcgXStep
@@ -318,7 +328,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
     
     def drawRESPWave(self):
         iCnt = len(self.mRESPWaveList)
-
         self.painterResp.setBrush(Qt.black)
         self.painterResp.setPen(QPen(Qt.black, 2, Qt.SolidLine))
 
@@ -334,6 +343,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.painterResp.setPen(pen)
 
         for i in range(iCnt - 1):
+            # y1 = int(self.maxRespHeight - self.mRESPWaveList[i] / 20)
+            # y2 = int(self.maxRespHeight - self.mRESPWaveList[i+1] / 20)
             y1 = int((self.maxRespHeight - (self.mRESPWaveList[i] - 14000) * 0.005))
             y2 = int((self.maxRespHeight - (self.mRESPWaveList[i+1] - 14000) * 0.005))
             x1 = self.mRespXStep
@@ -366,6 +377,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.painterSpo2.setPen(pen)
 
         for i in range(iCnt - 1):
+            # y1 = int((self.maxSpo2Height - (self.mSPO2WaveList[i]) / 10))
+            # y2 = int((self.maxSpo2Height - (self.mSPO2WaveList[i + 1]) / 10))
             y1 = int((self.maxSpo2Height - self.mSPO2WaveList[i]) / 5)
             y2 = int((self.maxSpo2Height - self.mSPO2WaveList[i + 1]) / 5)
             x1 = self.mSpo2XStep
@@ -383,74 +396,77 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
     def update_hr_display(self):
         """更新心率显示标签"""
-        self.HR_label.setText(f"{self.current_hr}")
-        if self.current_hr > self.HR_threshold_high or self.current_hr > 0 and self.current_hr < self.HR_threshold_low:
-            if not self.is_alarming:
-                self.alarm_player.play()
-                self.is_alarming = True
+        if self.current_hr < 300:
+            self.HR_label.setText(f"{self.current_hr}")
+            if self.current_hr > 0 and (self.current_hr < self.HR_threshold_low or self.current_hr > self.HR_threshold_high):
+                if not self.is_alarming:
+                    self.alarm_player.play()
+                    self.is_alarming = True
 
-            if self.alarm_player.state() != QMediaPlayer.PlayingState:
-                self.alarm_player.play()
+                if self.alarm_player.state() != QMediaPlayer.PlayingState:
+                    self.alarm_player.play()
 
-            if self.HR_blink_state:
-                self.HR_label.setFont(QFont("Agency FB", 120))
-                self.HR_label.setStyleSheet("color: #ff0000")
-                if self.current_hr >= self.HR_threshold_high:  # 高心率闪烁
-                    self.state_hr_label.setText("心率过速！")
-                    self.state_hr_label.setStyleSheet("color: #ff0000")
-                elif self.current_hr <= self.HR_threshold_low:
-                    self.state_hr_label.setText("心率过缓！")
-                    self.state_hr_label.setStyleSheet("color: #ff0000")
+                if self.HR_blink_state:
+                    self.HR_label.setFont(QFont("Agency FB", 120))
+                    self.HR_label.setStyleSheet("color: #ff0000")
+                    if self.current_hr > self.HR_threshold_high:  # 高心率闪烁
+                        self.state_label.setText("心率过速")
+                        self.state_label.setStyleSheet("border-radius: 5px; color: #000000; background-color: #00ff00")
+                    elif self.current_hr < self.HR_threshold_low:
+                        self.state_label.setText("心率过缓")
+                        self.state_label.setStyleSheet("border-radius: 5px; color: #000000; background-color: #00ff00")
+                else:
+                    self.HR_label.setFont(QFont("Agency FB", 130))
+
+                self.HR_blink_state = not self.HR_blink_state
             else:
-                self.HR_label.setFont(QFont("Agency FB", 130))
-                self.HR_label.setStyleSheet("color: #FFFFFF")
+                if "background-color: #00ff00" in self.state_label.styleSheet():
+                    self.state_label.setText("正常")
+                    self.state_label.setStyleSheet("color: #00ff00")
+                if self.is_alarming:
+                    self.alarm_player.stop()
+                    self.is_alarming = False
 
-            self.HR_blink_state = not self.HR_blink_state
-        else:
-            self.state_hr_label.setText("正常")
-            self.state_hr_label.setStyleSheet("color: #00ff00")
-            if self.is_alarming:
-                self.alarm_player.stop()
-                self.is_alarming = False
-
-            self.HR_label.setFont(QFont("Agency FB", 120))
-            self.HR_label.setStyleSheet("color: #00ff00")  # 绿色
-            self.HR_blink_state = False  # 重置闪烁状态
+                self.HR_label.setFont(QFont("Agency FB", 120))
+                self.HR_label.setStyleSheet("color: #00ff00")  # 绿色
+                self.HR_blink_state = False  # 重置闪烁状态
 
     def update_resp_display(self):
         """更新呼吸率显示标签"""
-        self.RESP_label.setText(f"{self.current_resp}")
-        if self.current_resp > self.RESP_threshold_high or self.current_resp > 0 and self.current_resp < self.RESP_threshold_low:
-            if not self.is_alarming:
-                self.alarm_player.play()
-                self.is_alarming = True
+        if self.current_resp < 30:
+            self.RESP_label.setText(f"{self.current_resp}")
+            if self.current_resp > 0 and (self.current_resp < self.RESP_threshold_low or self.current_resp > self.RESP_threshold_high):
+                if not self.is_alarming:
+                    self.alarm_player.play()
+                    self.is_alarming = True
 
-            if self.alarm_player.state() != QMediaPlayer.PlayingState:
-                self.alarm_player.play()
+                if self.alarm_player.state() != QMediaPlayer.PlayingState:
+                    self.alarm_player.play()
 
-            if self.RESP_blink_state:
-                self.RESP_label.setFont(QFont("Agency FB", 120))
-                self.RESP_label.setStyleSheet("color: #ff0000")
-                if self.current_resp > self.RESP_threshold_high:
-                    self.state_resp_label.setText("呼吸过快！")
-                    self.state_resp_label.setStyleSheet("color: #ff0000")
-                elif self.current_resp < self.RESP_threshold_low:
-                    self.state_resp_label.setText("呼吸过慢！")
-                    self.state_resp_label.setStyleSheet("color: #ff0000")
+                if self.RESP_blink_state:
+                    self.RESP_label.setFont(QFont("Agency FB", 120))
+                    self.RESP_label.setStyleSheet("color: #ff0000")
+                    if self.current_resp > self.RESP_threshold_high:
+                        self.state_label.setText("呼吸过快")
+                        self.state_label.setStyleSheet("border-radius: 5px; color: #000000; background-color: #ffc300")
+                    elif self.current_resp < self.RESP_threshold_low:
+                        self.state_label.setText("呼吸过慢")
+                        self.state_label.setStyleSheet("border-radius: 5px; color: #000000; background-color: #ffc300")
+                else:
+                    self.RESP_label.setFont(QFont("Agency FB", 130))
+
+                self.RESP_blink_state = not self.RESP_blink_state
             else:
-                self.RESP_label.setFont(QFont("Agency FB", 130))
+                if "background-color: #ffc300" in self.state_label.styleSheet():
+                    self.state_label.setText("正常")
+                    self.state_label.setStyleSheet("color: #00ff00")
+                if self.is_alarming:
+                    self.alarm_player.stop()
+                    self.is_alarming = False
 
-            self.RESP_blink_state = not self.RESP_blink_state
-        else:
-            self.state_hr_label.setText("正常")
-            self.state_hr_label.setStyleSheet("color: #00ff00")
-            if self.is_alarming:
-                self.alarm_player.stop()
-                self.is_alarming = False
-
-            self.RESP_label.setFont(QFont("Agency FB", 120))
-            self.RESP_label.setStyleSheet("color: #ffc300")
-            self.RESP_blink_state = False  # 重置闪烁状态
+                self.RESP_label.setFont(QFont("Agency FB", 120))
+                self.RESP_label.setStyleSheet("color: #ffc300")
+                self.RESP_blink_state = False  # 重置闪烁状态
 
     def update_spo2_display(self):
         """更新血氧显示标签"""
@@ -465,14 +481,17 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
             if self.SPO2_blink_state:
                 self.SpO2_label.setStyleSheet("color: #ff0000")
-                self.state_hr_label.setText("血氧饱和度过低！")
-                self.state_hr_label.setStyleSheet("color: #ff0000")
+                self.state_label.setText("血氧饱和度过低")
+                self.state_label.setStyleSheet("border-radius: 5px; color: #000000; background-color: #00ffee")
+            else:
+                self.SpO2_label.setFont(QFont("Agency FB", 90))
 
             self.SPO2_blink_state = not self.SPO2_blink_state
 
         else:
-            self.state_hr_label.setText("正常")
-            self.state_hr_label.setStyleSheet("color: #00ff00")
+            if "background-color: #00ffee" in self.state_label.styleSheet():
+                self.state_label.setText("正常")
+                self.state_label.setStyleSheet("color: #00ff00")
 
             if self.is_alarming:
                 self.alarm_player.stop()
@@ -485,28 +504,32 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
     def update_pr_display(self):
         """更新脉率显示标签"""
         self.PR_label.setText(f"{self.current_pr}")
-        if self.current_pr > 0 and self.current_pr < self.PR_threshold_low and self.current_pr > self.PR_threshold_high:
+        if self.current_pr > 0 and (self.current_pr < self.PR_threshold_low or self.current_pr > self.PR_threshold_high):
             if not self.is_alarming:
                 self.alarm_player.play()
                 self.is_alarming = True
+
+            if self.alarm_player.state() != QMediaPlayer.PlayingState:
+                self.alarm_player.play()
 
             if self.PR_blink_state:
                 self.PR_label.setFont(QFont("Agency FB", 80))
                 self.PR_label.setStyleSheet("color: #ff0000")
                 if self.current_pr > self.PR_threshold_high:
-                    self.state_hr_label.setText("脉率过高！")
-                    self.state_hr_label.setStyleSheet("color: #ff0000")
+                    self.state_label.setText("脉率过高")
+                    self.state_label.setStyleSheet("border-radius: 5px; color: #000000; background-color: #11ffee")
                 elif self.current_pr < self.PR_threshold_low:
-                    self.state_hr_label.setText("脉率过低！")
-                    self.state_hr_label.setStyleSheet("color: #ff0000")
+                    self.state_label.setText("脉率过低")
+                    self.state_label.setStyleSheet("border-radius: 5px; color: #000000; background-color: #11ffee")
             else:
                 self.PR_label.setFont(QFont("Agency FB", 90))
-                self.state_hr_label.setText("正常")
-                self.state_hr_label.setStyleSheet("color: #00ff00")
 
             self.PR_blink_state = not self.PR_blink_state
 
         else:
+            if "background-color: #11ffee" in self.state_label.styleSheet():
+                self.state_label.setText("正常")
+                self.state_label.setStyleSheet("color: #00ff00")
             if self.is_alarming:
                 self.alarm_player.stop()
                 self.is_alarming = False
@@ -537,16 +560,28 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         if re.match(r"^[\u4e00-\u9fa5a-zA-Z0-9_]+_[mf]_[0-9]+_[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2}\.txt$", basename):
             name = basename.split("_")[0]
             sex = basename.split("_")[1]
-            mode = basename.split("_")[2]
+            mode = int(basename.split("_")[2])
+            
+            if mode == 0:
+                mode_name = "成人"
+            elif mode == 1:
+                mode_name = "新生儿"
+            elif mode == 2:
+                mode_name = "婴儿"
+            elif mode == 3:
+                mode_name = "幼儿"
+            elif mode == 4:
+                mode_name = "学龄前"
+            elif mode == 5:
+                mode_name = "学龄"
+            elif mode == 6:
+                mode_name = "青少年"
+            else:
+                mode_name = "其他"
 
             self.name_label.setText(name)
             self.sex_label.setText("男" if sex == "m" else "女")
-            self.mode_label.setText(mode)
-
-        # 清空所有图像为黑色
-        self.pixmapEcg.fill(Qt.black)
-        self.pixmapSpo2.fill(Qt.black)
-        self.pixmapResp.fill(Qt.black)
+            self.mode_label.setText(mode_name)
 
         self.SPO2_wave.setPixmap(self.pixmapSpo2)
         self.ECG_wave.setPixmap(self.pixmapEcg)
@@ -556,6 +591,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.simulateTimer.start(2)
         self.status_label.setText("数据模拟中")
         self.procDataTimer.start(10)
+        self.updateTimer.start()
     
     def receive_simulate_data(self):
         data = self.data_file.readline()
@@ -598,12 +634,21 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
         self.mPackAfterUnpackArr = []
 
-        self.state_hr_label.setText("正常")
-        self.state_hr_label.setStyleSheet("color: #00ff00")
+        self.state_label.setText("正常")
+        self.state_label.setStyleSheet("color: #00ff00")
 
         self.procDataTimer.stop()
         self.simulateTimer.stop()
         self.serialPortTimer.stop()
+        self.updateTimer.stop()
+ 
+        self.pixmapEcg.fill(Qt.black)
+        self.pixmapSpo2.fill(Qt.black)
+        self.pixmapResp.fill(Qt.black)
+
+        self.ECG_wave.setPixmap(self.pixmapEcg)
+        self.SPO2_wave.setPixmap(self.pixmapSpo2)
+        self.RESP_wave.setPixmap(self.pixmapResp)
 
         self.mECG1WaveList = []
         self.mRESPWaveList = []
@@ -622,9 +667,14 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.is_alarming = False
 
         self.HR_label.setText("0")
+        self.HR_label.setStyleSheet("color: #00ff00")
         self.RESP_label.setText("0")
+        self.RESP_label.setStyleSheet("color: #ffb200")
         self.SpO2_label.setText("0")
+        self.SpO2_label.setStyleSheet("color: #00ffee")
         self.PR_label.setText("0")
+        self.PR_label.setStyleSheet("color: #00ffee")
+
     def update_time(self):
         """更新时间显示"""
         current_time = QDateTime.currentDateTime()
@@ -712,19 +762,18 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             QMessageBox.critical(self, "Error", "请填入姓名！")
             return
         
-    def threshold_slot(self, hr_low, hr_high, resp_low, resp_high, spo2_low):
+    def threshold_slot(self, hr_low, hr_high, resp_low, resp_high, spo2_low, pr_high, pr_low):
         self.HR_threshold_low = hr_low
         self.HR_threshold_high = hr_high
         self.RESP_threshold_low = resp_low
         self.RESP_threshold_high = resp_high
         self.SPO2_threshold_low = spo2_low
+        self.PR_threshold_high = pr_high
+        self.PR_threshold_low = pr_low
         QMessageBox.information(self, "提示", "阈值设置成功！")
+        self.BJ_Dialog.close()
 
         self.THRESHOLD_SIGNAL.emit(self.HR_threshold_low, self.HR_threshold_high, self.RESP_threshold_low, self.RESP_threshold_high, self.SPO2_threshold_low, self.PR_threshold_high, self.PR_threshold_low)
-
-        self.BJ_Dialog.close()
-    
-
 
 if __name__ == '__main__':
     QGuiApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
