@@ -633,6 +633,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.current_pr = 0
 
         self.mPackAfterUnpackArr = []
+        self.alarm_player.stop()
 
         self.state_label.setText("正常")
         self.state_label.setStyleSheet("color: #00ff00")
