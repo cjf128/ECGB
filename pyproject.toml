@@ -1,0 +1,7 @@
+[project]
+name = "ECGB"
+version = "0.1.0"
+description = "生命监护仪上位机"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
