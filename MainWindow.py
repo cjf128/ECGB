@@ -1,9 +1,6 @@
 
 import copy
-import datetime
-import math
 import os
-import random
 import re
 import sys
 from PySide2.QtWidgets import QMainWindow, QMessageBox, QApplication
@@ -26,11 +23,10 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.setupUi(self)
         self.setWindowIcon(QIcon('./ECGB.ico'))
         self.setWindowTitle('ECGB')
-        self.setFixedSize(1200, 900)
 
         self.CK_Dialog = CK_Dialog()
         self.CK_Dialog.setWindowTitle('串口设置')
-        self.CK_Dialog.setWindowModality(Qt.ApplicationModal) 
+        self.CK_Dialog.setWindowModality(Qt.ApplicationModal)
         self.CK_Dialog.hide()
         self.CK_Dialog.serialSignal.connect(self.serial_slot)
 
@@ -65,34 +61,40 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.time_list = []
 
         # ECG
-        self.mECG1WaveList = [] 
-        self.mEcgXStep = 0 
+        self.mECG1WaveList = []
+        self.mEcgXStep = 0
         self.maxEcgLength = self.ECG_wave.width()
         self.maxEcgHeight = self.ECG_wave.height()
         self.pixmapEcg = QPixmap(self.ECG_wave.width(), self.ECG_wave.height())
         self.pixmapEcg.fill(Qt.black)
         self.ECG_wave.setPixmap(self.pixmapEcg)
         self.painterEcg = QPainter(self.pixmapEcg)
+        self.ecg_min = None
+        self.ecg_max = None
 
         # Resp
-        self.mRESPWaveList = [] 
+        self.mRESPWaveList = []
         self.mRespXStep = 0
         self.maxRespLength = self.RESP_wave.width()
-        self.maxRespHeight = self.RESP_wave.height() 
+        self.maxRespHeight = self.RESP_wave.height()
         self.pixmapResp = QPixmap(self.RESP_wave.width(), self.RESP_wave.height())
         self.pixmapResp.fill(Qt.black)
         self.RESP_wave.setPixmap(self.pixmapResp)
         self.painterResp = QPainter(self.pixmapResp)
+        self.resp_min = None
+        self.resp_max = None
 
         # SPO2
-        self.mSPO2WaveList = [] 
+        self.mSPO2WaveList = []
         self.mSpo2XStep = 0
-        self.maxSpo2Length = self.SPO2_wave.width() 
+        self.maxSpo2Length = self.SPO2_wave.width()
         self.maxSpo2Height = self.SPO2_wave.height()
         self.pixmapSpo2 = QPixmap(self.SPO2_wave.width(), self.SPO2_wave.height())
-        self.pixmapSpo2.fill(Qt.black) 
+        self.pixmapSpo2.fill(Qt.black)
         self.SPO2_wave.setPixmap(self.pixmapSpo2)
         self.painterSpo2 = QPainter(self.pixmapSpo2)
+        self.spo2_min = None
+        self.spo2_max = None
 
         # 时间更新定时器
         self.clock_timer = QTimer(self)
@@ -149,7 +151,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         else:
             QMessageBox.critical(self, "Error", "请先填写信息！")
             return
-    
+
     def serial_slot(self, portNum, baudRate, dataBits, stopBits, parity):
         if self.ser.isOpen():
             self.serialPortTimer.stop()
@@ -164,7 +166,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             self.CK_Dialog.Open_btn.setText("打开串口")
             self.CK_Dialog.hide()
             return
-        
+
         self.ser.port = portNum
         self.ser.baudrate = int(baudRate)
         self.ser.bytesize = int(dataBits)
@@ -184,7 +186,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.status_label.setStyleSheet("color: #ffffff")
         self.CK_Dialog.Open_btn.setText("关闭串口")
         self.CK_Dialog.hide()
-    
+
     # 处理串口接收的数据
     def data_receive(self):
         try:
@@ -245,6 +247,12 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         if data[1] == 0x02:
             ecgData1 = data[2] << 8 | data[3]
             self.mECG1WaveList.append(ecgData1)
+
+            if self.ecg_min == None or ecgData1 < self.ecg_min:
+                self.ecg_min = ecgData1
+            if self.ecg_max == None or ecgData1 > self.ecg_max:
+                self.ecg_max = ecgData1
+
         elif data[1] == 0x03:
             if data[2] == 1:
                 self.DL1_label.setStyleSheet("color:red")
@@ -252,15 +260,19 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.DL1_label.setStyleSheet("color:green")
         elif data[1] == 0x04:
             self.current_hr = data[2] << 8 | data[3]
-            self.update_hr_display()
 
     def analyzeRESPData(self, data):
         if data[1] == 0x02:
             resp = data[2] << 8 | data[3]
             self.mRESPWaveList.append(resp)
+
+            if self.resp_min == None or resp < self.resp_min:
+                self.resp_min = resp
+            if self.resp_max == None or resp > self.resp_max:
+                self.resp_max = resp
+
         elif data[1] == 0x03:
             self.current_resp = data[2] << 8 | data[3]
-            self.update_resp_display()
         elif data[1] == 0x06:
             if data[2] == 1:
                 self.DL2_label.setStyleSheet("color:green")
@@ -272,6 +284,12 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             spo2Data = data[2] << 8 | data[3]
             if spo2Data != 0:
                 self.mSPO2WaveList.append(spo2Data)
+
+            if self.spo2_min == None or spo2Data < self.spo2_min:
+                self.spo2_min = spo2Data
+            if self.spo2_max == None or spo2Data > self.spo2_max:
+                self.spo2_max = spo2Data
+
         elif data[1] == 0x04:
             if data[2] == 0x01:
                 self.DL3_label.setText("手指脱落")
@@ -286,16 +304,17 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.DL4_label.setStyleSheet("color:black")
         elif data[1] == 0x03:
             self.current_spo2 = data[3]
-            self.update_spo2_display()
         elif data[1] == 0x06:
             self.current_pr = data[2]
-            self.update_pr_display()
 
     def drawECGWave(self):
         iCnt = len(self.mECG1WaveList)
 
         self.painterEcg.setBrush(Qt.black)
         self.painterEcg.setPen(QPen(Qt.black, 2, Qt.SolidLine))
+
+        min_val = self.ecg_min
+        max_val = self.ecg_max
 
         if iCnt > self.maxEcgLength - self.mEcgXStep:
             ECG1Rect = QRect(self.mEcgXStep, 0, self.maxEcgLength - self.mEcgXStep, self.maxEcgHeight)
@@ -309,10 +328,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.painterEcg.setPen(pen)
 
         for i in range(iCnt - 1):
-            # y1 = int(self.maxEcgHeight / 2 - (self.mECG1WaveList[i] - 2048) / 3)
-            # y2 = int(self.maxEcgHeight / 2 - (self.mECG1WaveList[i + 1] - 2048) / 3)
-            y1 = int(self.maxEcgHeight / 2 - (self.mECG1WaveList[i] - 2048) / 15)
-            y2 = int(self.maxEcgHeight / 2 - (self.mECG1WaveList[i + 1] - 2048) / 15)
+            y1 = int(self.maxEcgHeight - ((self.mECG1WaveList[i] - min_val) / (max_val - min_val)) * self.maxEcgHeight)
+            y2 = int(self.maxEcgHeight - ((self.mECG1WaveList[i+1] - min_val) / (max_val - min_val)) * self.maxEcgHeight)
             x1 = self.mEcgXStep
             x2 = self.mEcgXStep + 1
 
@@ -325,11 +342,13 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.mECG1WaveList = self.mECG1WaveList[-1:]
         self.ECG_wave.setPixmap(self.pixmapEcg)
 
-    
     def drawRESPWave(self):
         iCnt = len(self.mRESPWaveList)
         self.painterResp.setBrush(Qt.black)
         self.painterResp.setPen(QPen(Qt.black, 2, Qt.SolidLine))
+
+        min_val = self.resp_min
+        max_val = self.resp_max
 
         if iCnt > self.maxRespLength - self.mRespXStep:
             RESP1Rect = QRect(self.mRespXStep, 0, self.maxRespLength - self.mRespXStep, self.maxRespHeight)
@@ -343,10 +362,8 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.painterResp.setPen(pen)
 
         for i in range(iCnt - 1):
-            # y1 = int(self.maxRespHeight - self.mRESPWaveList[i] / 20)
-            # y2 = int(self.maxRespHeight - self.mRESPWaveList[i+1] / 20)
-            y1 = int((self.maxRespHeight - (self.mRESPWaveList[i] - 14000) * 0.005))
-            y2 = int((self.maxRespHeight - (self.mRESPWaveList[i+1] - 14000) * 0.005))
+            y1 = int(self.maxRespHeight - ((self.mRESPWaveList[i] - min_val) / (max_val - min_val)) * self.maxRespHeight)
+            y2 = int(self.maxRespHeight - ((self.mRESPWaveList[i+1] - min_val) / (max_val - min_val)) * self.maxRespHeight)
             x1 = self.mRespXStep
             x2 = self.mRespXStep + 1
 
@@ -358,12 +375,15 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
 
         self.mRESPWaveList = self.mRESPWaveList[-1:]
         self.RESP_wave.setPixmap(self.pixmapResp)
-    
+
     def drawSPO2Wave(self):
         iCnt = len(self.mSPO2WaveList)
 
         self.painterSpo2.setBrush(Qt.black)
         self.painterSpo2.setPen(QPen(Qt.black, 2, Qt.SolidLine))
+
+        min_val = self.spo2_min
+        max_val = self.spo2_max
 
         if iCnt > self.maxSpo2Length - self.mSpo2XStep:
             SPO21Rect = QRect(self.mSpo2XStep, 0, self.maxSpo2Length - self.mSpo2XStep, self.maxSpo2Height)
@@ -377,8 +397,6 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.painterSpo2.setPen(pen)
 
         for i in range(iCnt - 1):
-            # y1 = int((self.maxSpo2Height - (self.mSPO2WaveList[i]) / 10))
-            # y2 = int((self.maxSpo2Height - (self.mSPO2WaveList[i + 1]) / 10))
             y1 = int((self.maxSpo2Height - self.mSPO2WaveList[i]) / 5)
             y2 = int((self.maxSpo2Height - self.mSPO2WaveList[i + 1]) / 5)
             x1 = self.mSpo2XStep
@@ -561,7 +579,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             name = basename.split("_")[0]
             sex = basename.split("_")[1]
             mode = int(basename.split("_")[2])
-            
+
             if mode == 0:
                 mode_name = "成人"
             elif mode == 1:
@@ -592,7 +610,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.status_label.setText("数据模拟中")
         self.procDataTimer.start(10)
         self.updateTimer.start()
-    
+
     def receive_simulate_data(self):
         data = self.data_file.readline()
         if data:
@@ -625,7 +643,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
             self.CK_Dialog.open_slot()
         elif QMessageBox.No:
             return
-    
+
     def clear_all(self):
         self.current_hr = 0
         self.current_resp = 0
@@ -642,7 +660,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         self.simulateTimer.stop()
         self.serialPortTimer.stop()
         self.updateTimer.stop()
- 
+
         self.pixmapEcg.fill(Qt.black)
         self.pixmapSpo2.fill(Qt.black)
         self.pixmapResp.fill(Qt.black)
@@ -754,7 +772,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
                 self.RESP_threshold_high = 20
                 self.SPO2_threshold_low = 94
                 self.PR_threshold_low = 60
-                self.PR_threshold_high = 100            
+                self.PR_threshold_high = 100
 
             self.THRESHOLD_SIGNAL.emit(self.HR_threshold_low, self.HR_threshold_high, self.RESP_threshold_low, self.RESP_threshold_high, self.SPO2_threshold_low, self.PR_threshold_high, self.PR_threshold_low)
 
@@ -762,7 +780,7 @@ class MainWindow(QMainWindow, Ui_ECGB_Window):
         elif set_signal == 0:
             QMessageBox.critical(self, "Error", "请填入姓名！")
             return
-        
+
     def threshold_slot(self, hr_low, hr_high, resp_low, resp_high, spo2_low, pr_high, pr_low):
         self.HR_threshold_low = hr_low
         self.HR_threshold_high = hr_high
@@ -785,4 +803,3 @@ if __name__ == '__main__':
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
-
